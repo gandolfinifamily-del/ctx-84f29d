@@ -2,348 +2,285 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Spese Famiglia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link class="apple-touch-icon" href="icon-192.png">
-    <link rel="manifest" href="manifest.json">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { position: fixed; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        .schermata-app { display: none !important; height: 100%; flex-direction: column; justify-content: space-between; }
-        .schermata-app.attiva-visibile { display: flex !important; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; }
+        .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 16px); }
+        .safe-top { padding-top: env(safe-area-inset-top); }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 h-screen p-4 pb-8 select-none">
+<body class="text-slate-100 select-none antialiased">
 
-    <div id="schermata-pin" class="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 z-50" style="display: none;">
-        <div class="w-full max-w-xs text-center space-y-6">
-            <h2 class="text-xl font-bold tracking-wide text-slate-200 uppercase">Accesso Protetto</h2>
-            <p class="text-xs text-slate-400">Inserisci il PIN per sbloccare l'applicazione.</p>
-            <input type="password" id="input-pin" placeholder="Inserisci PIN" inputmode="numeric" pattern="[0-9]*" class="w-full bg-slate-900 text-center text-2xl font-bold rounded-xl p-4 border border-slate-700 focus:outline-none focus:border-emerald-500 tracking-widest text-emerald-400">
-            <button onclick="verificaEAttivaPIN()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3.5 rounded-xl text-md shadow-lg transition-all">
-                Sblocca App
-            </button>
-        </div>
+    <div id="status-bar" class="fixed top-0 left-0 right-0 z-50 text-center text-[11px] font-medium py-1 bg-slate-900/80 backdrop-blur border-b border-slate-800 safe-top hidden">
+        <span id="status-text" class="text-teal-400">Sincronizzazione completata</span>
     </div>
 
-    <div id="view-home" class="schermata-app attiva-visibile">
-        <div class="flex justify-between items-center pt-4">
-            <div class="w-10"></div>
-            <h1 class="text-lg font-semibold tracking-wide text-slate-400 uppercase">Spese Famiglia</h1>
-            <button onclick="cambiaSchermata('view-impostazioni')" class="text-slate-400 hover:text-slate-200 text-xl p-1">⚙️</button>
-        </div>
-        
-        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 text-center max-w-sm mx-auto w-full my-auto space-y-2">
-            <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Uscite Mese Corrente</p>
-            <p id="totale-mese" class="text-4xl font-extrabold text-emerald-400">€ 0.00</p>
-            <p class="text-[10px] text-slate-500">Aggiornato in tempo reale</p>
-        </div>
-
-        <div class="w-full max-w-sm mx-auto space-y-3">
-            <button onclick="cambiaSchermata('view-inserimento')" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-4 rounded-xl text-lg shadow-lg flex items-center justify-center space-x-2">
-                <span>➕</span> <span>Nuova Spesa</span>
-            </button>
-            <button onclick="apriElencoMovimenti()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-4 rounded-xl text-lg flex items-center justify-center space-x-2">
-                <span>📋</span> <span>Elenco Movimenti</span>
-            </button>
-        </div>
-    </div>
-
-    <div id="view-inserimento" class="schermata-app">
-        <div class="flex justify-between items-center pt-2">
-            <button onclick="tornaAllaHome()" class="text-slate-400 text-sm font-medium px-2 py-1">✕ Annulla</button>
-            <h1 id="titolo-inserimento" class="text-sm font-bold tracking-wide text-slate-400 uppercase">Nuovo Inserimento</h1>
-            <div class="w-16"></div>
-        </div>
-
-        <div class="flex flex-col items-center my-auto w-full max-w-sm mx-auto">
-            <div class="flex items-center justify-center text-5xl font-bold text-emerald-400 tracking-tight">
-                <span>€</span>
-                <input type="number" id="importo" placeholder="0.00" step="0.01" inputmode="decimal" class="w-48 bg-transparent text-center focus:outline-none border-b border-slate-700 pb-1 ml-1">
-            </div>
-            <input type="text" id="descrizione" placeholder="Note (es. Coop, Conad...)" class="mt-6 w-full bg-slate-800 text-slate-200 text-center rounded-xl p-3.5 border border-slate-700 focus:outline-none focus:border-emerald-500 text-sm">
-        </div>
-
-        <div class="w-full max-w-sm mx-auto space-y-4">
-            <div class="grid grid-cols-2 gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
-                <button onclick="setAutore('Mattia')" id="btn-Mattia" class="py-2.5 rounded-lg text-sm font-bold transition-all bg-emerald-500 text-slate-950 shadow">Mattia</button>
-                <button onclick="setAutore('Claudia')" id="btn-Claudia" class="py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400">Claudia</button>
-            </div>
-            <div class="grid grid-cols-3 gap-2" id="griglia-categorie"></div>
-            <button onclick="salvaSpesa()" id="btn-invia" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-4 rounded-xl text-lg shadow-lg flex items-center justify-center">
-                <span id="testo-bottone">Registra Spesa</span>
-            </button>
-        </div>
-    </div>
-
-    <div id="view-elenco" class="schermata-app">
-        <div class="flex justify-between items-center pt-2 pb-3 border-b border-slate-800">
-            <button onclick="cambiaSchermata('view-home')" class="text-slate-400 text-sm font-medium px-2">← Home</button>
-            <h1 class="text-sm font-bold tracking-wide text-slate-400 uppercase">Ultimi Movimenti</h1>
-            <button onclick="caricaMovimentiDati()" class="text-emerald-400 text-sm font-medium px-2">🔄 Aggiorna</button>
-        </div>
-        <div id="lista-movimenti" class="flex-1 overflow-y-auto my-4 space-y-2 pr-1">
-            <p class="text-center text-slate-500 text-sm pt-8">Caricamento in corso...</p>
-        </div>
-    </div>
-
-    <div id="view-impostazioni" class="schermata-app">
-        <div class="flex justify-between items-center pt-2 pb-3 border-b border-slate-800">
-            <button onclick="cambiaSchermata('view-home')" class="text-slate-400 text-sm font-medium px-2">← Home</button>
-            <h1 class="text-sm font-bold tracking-wide text-slate-400 uppercase">Impostazioni App</h1>
-            <div class="w-12"></div>
-        </div>
-
-        <div class="flex-1 overflow-y-auto my-4 space-y-6 max-w-sm mx-auto w-full">
-            <div class="bg-slate-800/80 border border-slate-700 p-5 rounded-2xl space-y-3">
-                <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider">Modifica PIN Sicurezza</h3>
-                <div class="space-y-2">
-                    <input type="password" id="pin-vecchio" placeholder="Vecchio PIN" inputmode="numeric" class="w-full bg-slate-900 rounded-xl p-3 border border-slate-700 focus:outline-none focus:border-emerald-500 text-sm text-center font-bold tracking-widest">
-                    <input type="password" id="pin-nuovo" placeholder="Nuovo PIN (Minimo 4 cifre)" inputmode="numeric" class="w-full bg-slate-900 rounded-xl p-3 border border-slate-700 focus:outline-none focus:border-emerald-500 text-sm text-center font-bold tracking-widest">
+    <div id="schermata-pin" class="fixed inset-0 bg-slate-950 z-50 flex flex-col justify-center items-center px-6">
+        <div class="w-full max-w-sm text-center space-y-8">
+            <div class="space-y-2">
+                <div class="w-16 h-16 bg-gradient-to-tr from-teal-500 to-emerald-400 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-teal-500/20">
+                    <i class="fa-solid fa-vault text-2xl text-slate-950"></i>
                 </div>
-                <button onclick="gestisciCambioPIN()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-sm transition-all shadow">
-                    Salva Nuovo PIN
-                </button>
+                <h1 class="text-xl font-bold tracking-tight text-slate-200 pt-2">Accesso Protetto</h1>
+                <p class="text-xs text-slate-400">Inserisci il codice di sicurezza familiare</p>
             </div>
-
-            <div class="bg-slate-800/80 border border-slate-700 p-5 rounded-2xl text-center space-y-3">
-                <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider">Gestione Sessione</h3>
-                <p class="text-xs text-slate-400">Rimuove l'autorizzazione da questo telefono. Utile per testare se il blocco funziona.</p>
-                <button onclick="scollegaDispositivo()" class="w-full bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold py-3 rounded-xl text-sm transition-all">
-                    📴 Scollega questo dispositivo
-                </button>
+            <div class="space-y-4">
+                <input id="input-pin" type="password" pattern="[0-9]*" inputmode="numeric" maxlength="6" placeholder="••••" class="w-full bg-slate-900 border border-slate-800 text-center text-2xl tracking-[1em] font-bold py-3.5 rounded-2xl text-teal-400 focus:outline-none focus:border-teal-500 transition-all shadow-inner placeholder:tracking-normal placeholder:text-slate-700">
+                <button onclick="verificaEAttivaPIN()" class="w-full bg-teal-500 text-slate-950 font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-all shadow-md shadow-teal-500/10 text-sm">Sblocca Applicazione</button>
             </div>
         </div>
-        <div class="text-center text-[10px] text-slate-600 font-mono">Secured with SHA-256</div>
     </div>
 
-    <div id="modal-gestione" class="fixed inset-0 bg-slate-950/80 flex items-end justify-center p-4 z-50 hidden">
-        <div class="bg-slate-800 w-full max-w-sm rounded-2xl border border-slate-700 p-5 space-y-4">
-            <div class="text-center">
-                <h3 id="modal-titolo" class="font-bold text-lg text-slate-100">Spesa</h3>
-                <p id="modal-dettaglio" class="text-xs text-slate-400 mt-1">Dettagli</p>
+    <div id="app-content" class="min-h-screen flex flex-col max-w-md mx-auto bg-slate-900 shadow-2xl relative pb-24 safe-top">
+        
+        <div id="view-home" class="view-content p-5 space-y-5">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Bilancio Familiare</p>
+                    <h2 class="text-xl font-bold text-slate-200">Ciao, <span id="label-utente" class="text-teal-400 capitalize">Mattia</span> 👋</h2>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="forzaSincronizzazione()" class="w-10 h-10 bg-slate-800/80 border border-slate-700 rounded-xl flex items-center justify-center active:scale-95 transition-all"><i class="fa-solid fa-rotate text-sm text-slate-400"></i></button>
+                    <button onclick="cambiaSchermata('view-impostazioni')" class="w-10 h-10 bg-slate-800/80 border border-slate-700 rounded-xl flex items-center justify-center active:scale-95 transition-all"><i class="fa-solid fa-gear text-sm text-slate-400"></i></button>
+                </div>
             </div>
-            <div class="grid grid-cols-2 gap-3 pt-2">
-                <button onclick="attivaModificaMovimento()" class="bg-blue-600 text-white font-bold py-3.5 rounded-xl text-sm flex items-center justify-center space-x-1">✏️ Modifica</button>
-                <button onclick="eliminaMovimentoSelezionato()" class="bg-rose-600 text-white font-bold py-3.5 rounded-xl text-sm flex items-center justify-center space-x-1">🗑️ Elimina</button>
+
+            <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/60 rounded-3xl p-6 relative overflow-hidden shadow-lg">
+                <div class="absolute -right-8 -bottom-8 w-32 h-32 bg-teal-500/5 rounded-full blur-2xl"></div>
+                <p class="text-xs font-medium text-slate-400">Uscite Totali Mese Corrente</p>
+                <h3 id="totale-mese" class="text-3xl font-black tracking-tight text-slate-100 mt-1">€ 0.00</h3>
+                <div class="flex items-center space-x-2 mt-4 text-[11px] bg-slate-900/60 border border-slate-800 px-3 py-1.5 rounded-xl w-fit">
+                    <span class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+                    <p class="text-slate-400">Sincronizzato con Google Sheets</p>
+                </div>
             </div>
-            <button onclick="chiudiModal()" class="w-full bg-slate-700 text-slate-300 font-medium py-3 rounded-xl text-sm">Annulla</button>
+
+            <div class="space-y-2">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Chi effettua la spesa?</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="btn-autore-mattia" onclick="selezionaAutore('mattia')" class="p-3.5 rounded-2xl border text-sm font-bold flex items-center justify-center space-x-2 transition-all bg-teal-500/10 border-teal-500/30 text-teal-400 shadow-md shadow-teal-500/5">
+                        <i class="fa-solid fa-user-tie"></i> <span>Mattia</span>
+                    </button>
+                    <button id="btn-autore-claudia" onclick="selezionaAutore('claudia')" class="p-3.5 rounded-2xl border text-sm font-bold flex items-center justify-center space-x-2 transition-all bg-slate-800/80 border-slate-700/80 text-slate-400">
+                        <i class="fa-solid fa-user-ninja"></i> <span>Claudia</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Seleziona Categoria</p>
+                <div id="grid-categorie" class="grid grid-cols-3 gap-2.5">
+                    </div>
+            </div>
         </div>
+
+        <div id="view-movimenti" class="view-content p-5 space-y-4 hidden">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-200">Registro Spese</h2>
+                    <p class="text-xs text-slate-400">Ultimi movimenti registrati nel cloud</p>
+                </div>
+                <button onclick="forzaSincronizzazione()" class="text-xs font-bold text-teal-400 bg-teal-500/5 border border-teal-500/20 px-3 py-1.5 rounded-xl active:scale-95"><i class="fa-solid fa-arrows-rotate mr-1"></i> Aggiorna</button>
+            </div>
+            <div id="lista-movimenti" class="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+                </div>
+        </div>
+
+        <div id="view-inserimento" class="view-content p-5 space-y-5 hidden">
+            <div class="flex items-center space-x-3">
+                <button onclick="tornaAllaHome()" class="w-9 h-9 bg-slate-800 rounded-xl flex items-center justify-center active:scale-90"><i class="fa-solid fa-arrow-left text-sm"></i></button>
+                <div>
+                    <h2 id="titolo-inserimento" class="text-lg font-bold text-slate-200">Nuovo Inserimento</h2>
+                    <p id="sottotitolo-inserimento" class="text-xs text-slate-400 font-medium text-teal-400 capitalize">Spesa</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-center space-y-1 relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-600">€</span>
+                <input id="importo" type="number" step="0.01" inputmode="decimal" placeholder="0,00" class="w-full bg-transparent text-slate-100 text-3xl font-black text-center focus:outline-none placeholder:text-slate-800 text-teal-400">
+            </div>
+
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 pl-1">Descrizione (Opzionale)</label>
+                <input id="descrizione" type="text" placeholder="Es. Spesa Conad, Rifornimento..." class="w-full bg-slate-950 border border-slate-800 px-4 py-3.5 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-slate-700 placeholder:text-slate-600">
+            </div>
+
+            <button id="btn-invia" onclick="salvaSpesa()" class="w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 font-black py-4 rounded-2xl shadow-lg active:scale-[0.98] transition-all flex items-center justify-center space-x-2 text-sm">
+                <i class="fa-solid fa-cloud-arrow-up"></i> <span id="testo-bottone">Registra Spesa</span>
+            </button>
+        </div>
+
+        <div id="view-impostazioni" class="view-content p-5 space-y-5 hidden">
+            <div class="flex items-center space-x-3">
+                <button onclick="cambiaSchermata('view-home')" class="w-9 h-9 bg-slate-800 rounded-xl flex items-center justify-center active:scale-90"><i class="fa-solid fa-arrow-left text-sm"></i></button>
+                <h2 class="text-lg font-bold text-slate-200">Impostazioni App</h2>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800/80 pb-3">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-300">Versione PWA</p>
+                        <p class="text-[11px] text-slate-500">Allineamento Vercel Cloud</p>
+                    </div>
+                    <span class="text-xs font-mono px-2 py-1 bg-slate-900 border border-slate-800 text-slate-400 rounded-md">v3.0.0-Stable</span>
+                </div>
+                <button onclick="effettuaLogOut()" class="w-full bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold py-3 rounded-xl active:scale-95 transition-all text-xs flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-power-off"></i> <span>📴 Scollega questo dispositivo</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="modal-gestione" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end justify-center hidden" onclick="chiudiModal()">
+            <div class="bg-slate-900 border-t border-slate-800 w-full max-w-md rounded-t-3xl p-5 space-y-4 shadow-2xl transform translate-y-0 transition-transform safe-bottom" onclick="event.stopPropagation()">
+                <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-2 opacity-40"></div>
+                <div class="text-center">
+                    <h4 id="modal-titolo" class="text-2xl font-black text-slate-100">€ 0.00</h4>
+                    <p id="modal-dettaglio" class="text-xs text-slate-400 mt-0.5">Dettaglio movimento</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <button onclick="attivaModificaMovimento()" class="bg-slate-800 border border-slate-700 text-slate-200 font-bold py-3.5 rounded-2xl active:scale-95 flex items-center justify-center space-x-2 text-xs">
+                        <i class="fa-solid fa-pen-to-square text-teal-400"></i> <span>Modifica Spesa</span>
+                    </button>
+                    <button onclick="eliminaMovimentoSelezionato()" class="bg-rose-500/10 border border-rose-500/30 text-rose-400 font-bold py-3.5 rounded-2xl active:scale-95 flex items-center justify-center space-x-2 text-xs">
+                        <i class="fa-solid fa-trash-can"></i> <span>Elimina Spesa</span>
+                    </button>
+                </div>
+                <button onclick="chiudiModal()" class="w-full bg-slate-950 border border-slate-800 text-slate-400 font-medium py-3 rounded-xl text-xs active:scale-95">Annulla</button>
+            </div>
+        </div>
+
+        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-950/90 backdrop-blur-md border-t border-slate-800/80 flex justify-around items-center py-2.5 z-40 safe-bottom">
+            <button id="nav-home" onclick="cambiaSchermata('view-home')" class="flex flex-col items-center space-y-1 text-teal-400">
+                <i class="fa-solid fa-house-chimney text-lg"></i><span class="text-[10px] font-bold">Dashboard</span>
+            </button>
+            <button id="nav-movimenti" onclick="cambiaSchermata('view-movimenti')" class="flex flex-col items-center space-y-1 text-slate-500">
+                <i class="fa-solid fa-list-ul text-lg"></i><span class="text-[10px] font-bold">Movimenti</span>
+            </button>
+        </nav>
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw5z8gut6gPqVAlhtp8qw6ZksjoSFNdnfwk76u2B_kLDK8bTHig2qDL7Vi9yFru1DtR/exec";
+        // --- CONFIGURAZIONE WEB APP URL (INCOLLA QUI IL TUO URL DI GOOGLE DEPLOY) ---
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw6H0C8E_A_E5P2q9tZ4-96h2W_P8uC_oF1-V2n/exec"; // Assicurati sia corretto
         const TOKEN_SEGRETO = "Mellaredo2026!";
-        const HASH_PIN_PREDEFINITO = "0e461239c0944ffb9a6a81bf4bb4ee56b060cf4fbf2f91a27e79c099b24b8cfc";
+        
+        // --- CENTRALIZZAZIONE PIN: SCRIVI QUI IL TUO NUOVO PIN DIRECTAMENTE ---
+        const PIN_ACCESSO_FAMIGLIA = "2026"; // Sostituisci "2026" con il numero che vuoi (es. "1234")
 
-        let autoreSelezionato = "Mattia";
-        let categoriaSelezionata = "Spesa";
+        const CATEGORIE = [
+            { id: 'Spesa', nome: 'Spesa', icon: 'fa-basket-shopping', color: 'from-amber-500/10 to-orange-500/5 text-amber-400 border-amber-500/20' },
+            { id: 'Bollette', nome: 'Bollette', icon: 'fa-bolt', color: 'from-sky-500/10 to-blue-500/5 text-sky-400 border-sky-500/20' },
+            { id: 'Auto', nome: 'Auto e Benzina', icon: 'fa-car-side', color: 'from-purple-500/10 to-indigo-500/5 text-purple-400 border-purple-500/20' },
+            { id: 'Casa', nome: 'Casa / Fai da te', icon: 'fa-hammer', color: 'from-emerald-500/10 to-teal-500/5 text-emerald-400 border-emerald-500/20' },
+            { id: 'Svago', nome: 'Svago e Ristoranti', icon: 'fa-utensils', color: 'from-rose-500/10 to-pink-500/5 text-rose-400 border-rose-500/20' },
+            { id: 'Entrate', nome: 'Entrate / Stipendi', icon: 'fa-money-bill-trend-up', color: 'from-teal-500/15 to-emerald-500/5 text-teal-400 border-teal-500/30' }
+        ];
+
+        let autoreSelezionato = 'mattia';
+        let categoriaSelezionata = 'Spesa';
         let cacheMovimenti = [];
         let movimentoSelezionatoId = null;
         let modoModifica = false;
 
-        async function calcolaSHA256(stringa) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(stringa);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-
-        function ottieniHashValido() {
-            return localStorage.getItem('app_central_pin_hash') || HASH_PIN_PREDEFINITO;
-        }
-
-        function controllaAccesso() {
-            const statoSblocco = sessionStorage.getItem('app_is_unlocked');
-            if (statoSblocco !== "true") {
-                document.getElementById('schermata-pin').style.display = 'flex';
-            } else {
+        window.addEventListener('load', async () => {
+            generaGrigliaCategorie();
+            if (sessionStorage.getItem('app_is_unlocked') === "true") {
                 document.getElementById('schermata-pin').style.display = 'none';
+                document.getElementById('schermata-pin').classList.add('hidden');
+                await caricaMovimentiDati();
                 aggiornaTotaleMese();
             }
-        }
-
-        async function verificaEAttivaPIN() {
-            const inputField = document.getElementById('input-pin');
-            const pinInserito = inputField.value.trim();
-            if (!pinInserito) return;
-            
-            const btnSblocca = document.querySelector('#schermata-pin button');
-            btnSblocca.disabled = true;
-            btnSblocca.innerText = "Verifica...";
-
-            try {
-                // Chiede l'hash aggiornato direttamente a Google Sheets in modo sicuro
-                const response = await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: TOKEN_SEGRETO, azione: "verifica_pin" })
-                });
-                
-                // Se la POST asincrona fallisce o non risponde, usiamo l'ultimo hash locale conosciuto
-                let hashValido = ottieniHashValido().trim();
-                if (response.ok) {
-                    const r = await response.json();
-                    if (r.status === "success" && r.pin_hash) {
-                        hashValido = r.pin_hash.trim();
-                        localStorage.setItem('app_central_pin_hash', hashValido);
-                    }
-                }
-
-                const hashInserito = await calcolaSHA256(pinInserito);
-
-                if (hashInserito === hashValido || pinInserito === "2026") {
-                    sessionStorage.setItem('app_is_unlocked', "true");
-                    document.getElementById('schermata-pin').style.style.display = 'none';
-                    document.getElementById('schermata-pin').classList.add('hidden');
-                    inputField.value = '';
-                    await caricaMovimentiDati();
-                    aggiornaTotaleMese();
-                } else {
-                    alert("PIN Errato! Accesso negato.");
-                    inputField.value = '';
-                }
-            } catch (e) {
-                // Fallback offline se la rete salta momentaneamente durante il controllo
-                const hashInserito = await calcolaSHA256(pinInserito);
-                if (hashInserito === ottieniHashValido().trim() || pinInserito === "2026") {
-                    sessionStorage.setItem('app_is_unlocked', "true");
-                    document.getElementById('schermata-pin').style.display = 'none';
-                    document.getElementById('schermata-pin').classList.add('hidden');
-                    inputField.value = '';
-                    caricaMovimentiDati();
-                } else {
-                    alert("PIN Errato o Errore di Connessione.");
-                }
-            } finally {
-                btnSblocca.disabled = false;
-                btnSblocca.innerText = "Sblocca App";
-            }
-        }
-        
-async function gestisciCambioPIN() {
-            const vecchioPinInput = document.getElementById('pin-vecchio');
-            const nuovoPinInput = document.getElementById('pin-nuovo');
-            
-            const vecchioPin = vecchioPinInput.value.trim();
-            const nuovoPin = nuovoPinInput.value.trim();
-
-            if (!vecchioPin || !nuovoPin) { alert("Compila entrambi i campi!"); return; }
-            if (nuovoPin.length < 4) { alert("Il nuovo PIN deve avere almeno 4 cifre."); return; }
-
-            const hashVecchioInserito = await calcolaSHA256(vecchioPin);
-            const hashValido = ottieniHashValido().trim();
-
-            if (hashVecchioInserito === hashValido || vecchioPin === "2026") {
-                const nuovoHash = await calcolaSHA256(nuovoPin);
-                
-                const dati = {
-                    token: TOKEN_SEGRETO,
-                    azione: "cambio_pin",
-                    nuovo_hash: nuovoHash
-                };
-
-                try {
-                    // Usiamo 'no-cors' per aggirare i blocchi del browser sul cambio PIN
-                    await fetch(WEB_APP_URL, { 
-                        method: 'POST', 
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify(dati) 
-                    });
-
-                    // Salviamo subito il nuovo hash localmente sul dispositivo corrente
-                    localStorage.setItem('app_central_pin_hash', nuovoHash);
-                    
-                    alert("Richiesta di cambio PIN inviata! Il cloud si aggiornerà in pochi secondi. 🔐");
-                    vecchioPinInput.value = '';
-                    nuovoPinInput.value = '';
-                    cambiaSchermata('view-home');
-                } catch(err) {
-                    alert("Errore nell'invio dei dati.");
-                }
-            } else {
-                alert("Il vecchio PIN non è corretto!");
-                vecchioPinInput.value = '';
-            }
-        }
-        
-        function scollegaDispositivo() {
-            sessionStorage.removeItem('app_is_unlocked');
-            window.location.reload();
-        }
-
-        function tornaAllaHome() {
-            modoModifica = false;
-            document.getElementById('titolo-inserimento').innerText = "Nuovo Inserimento";
-            document.getElementById('testo-bottone').innerText = "Registra Spesa";
-            document.getElementById('importo').value = '';
-            document.getElementById('descrizione').value = '';
-            setCategoria('Spesa');
-            cambiaSchermata('view-home');
-            aggiornaTotaleMese();
-        }
-
-        const categories = [
-            { id: 'Spesa', label: '🛒 Spesa', color: 'bg-blue-600' },
-            { id: 'Casa', label: '🏡 Casa/Mutuo', color: 'bg-amber-600' },
-            { id: 'Bollette', label: '⚡ Bollette', color: 'bg-yellow-600' },
-            { id: 'Bimbe', label: '🧸 Bimbe', color: 'bg-purple-600' },
-            { id: 'Auto', label: '🚗 Auto', color: 'bg-cyan-600' },
-            { id: 'Elettronica', label: '💻 Tech', color: 'bg-indigo-600' },
-            { id: 'Svago', label: '🍿 Svago', color: 'bg-pink-600' },
-            { id: 'Regali', label: '🎁 Regali', color: 'bg-rose-600' },
-            { id: 'Entrate', label: '💰 Entrata', color: 'bg-teal-600' }
-        ];
-
-        const griglia = document.getElementById('griglia-categorie');
-        categories.forEach(cat => {
-            const btn = document.createElement('button');
-            btn.id = `cat-${cat.id}`;
-            btn.className = `p-3 rounded-xl text-xs font-semibold flex flex-col items-center justify-center bg-slate-800 text-slate-300`;
-            btn.innerText = cat.label;
-            btn.onclick = () => setCategoria(cat.id);
-            griglia.appendChild(btn);
         });
 
-        function setAutore(nome) {
-            autoreSelezionato = nome;
-            document.getElementById('btn-Mattia').className = nome === 'Mattia' ? 'py-2.5 rounded-lg text-sm font-bold bg-emerald-500 text-slate-950 shadow' : 'py-2.5 rounded-lg text-sm font-medium text-slate-400';
-            document.getElementById('btn-Claudia').className = nome === 'Claudia' ? 'py-2.5 rounded-lg text-sm font-bold bg-emerald-500 text-slate-950 shadow' : 'py-2.5 rounded-lg text-sm font-medium text-slate-400';
+        function generaGrigliaCategorie() {
+            const grid = document.getElementById('grid-categorie');
+            grid.innerHTML = '';
+            CATEGORIE.forEach(c => {
+                const b = document.createElement('button');
+                b.id = `cat-${c.id}`;
+                b.onclick = () => selezionaCategoria(c.id);
+                b.className = `p-4 rounded-2xl border bg-slate-800/40 border-slate-800 text-slate-400 flex flex-col items-center justify-center space-y-2 active:scale-95 transition-all text-center`;
+                b.innerHTML = `<div class="w-8 h-8 rounded-xl flex items-center justify-center bg-slate-900"><i class="fa-solid ${c.icon} text-sm"></i></div><span class="text-[11px] font-bold leading-tight">${c.nome}</span>`;
+                grid.appendChild(b);
+            });
+            selezionaCategoria('Spesa');
         }
 
-        function setCategoria(id) {
-            categoriaSelezionata = id;
-            categories.forEach(cat => {
-                const btn = document.getElementById(`cat-${cat.id}`);
-                btn.className = cat.id === id ? `p-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center border-2 border-emerald-400 ${cat.color} text-white scale-105 shadow-md` : `p-3 rounded-xl text-xs font-semibold flex flex-col items-center justify-center bg-slate-800 text-slate-300`;
-            });
+        function selezionaAutore(autore) {
+            autoreSelezionato = autore;
+            document.getElementById('label-utente').innerText = autore;
+            document.getElementById('btn-autore-mattia').className = autore === 'mattia' ? "p-3.5 rounded-2xl border text-sm font-bold flex items-center justify-center space-x-2 transition-all bg-teal-500/10 border-teal-500/30 text-teal-400" : "p-3.5 rounded-2xl border text-sm font-bold flex items-center justify-center space-x-2 transition-all bg-slate-800/80 border-slate-700/80 text-slate-400";
+            document.getElementById('btn-autore-claudia').className = autore === 'claudia' ? "p-3.5 rounded-2xl border text-sm font-bold flex items-center justify-center space-x-2 transition-all bg-teal-500/10 border-teal-500/30 text-teal-400" : "p-3.5 rounded-2xl border text-sm font-bold flex items-center justify-center space-x-2 transition-all bg-slate-800/80 border-slate-700/80 text-slate-400";
         }
-        setCategoria('Spesa');
+
+        function selezionaCategoria(catId) {
+            categoriaSelezionata = catId;
+            CATEGORIE.forEach(c => {
+                const el = document.getElementById(`cat-${c.id}`);
+                if(el) el.className = `p-3.5 rounded-2xl border bg-slate-800/40 border-slate-800/80 text-slate-400 flex flex-col items-center justify-center space-y-1.5 active:scale-95 transition-all text-center`;
+            });
+            const attivo = CATEGORIE.find(c => c.id === catId);
+            const elAttivo = document.getElementById(`cat-${catId}`);
+            if(elAttivo && attivo) elAttivo.className = `p-3.5 rounded-2xl border bg-gradient-to-br ${attivo.color} flex flex-col items-center justify-center space-y-1.5 active:scale-95 transition-all text-center shadow-lg`;
+            
+            modoModifica = false;
+            document.getElementById('titolo-inserimento').innerText = "Nuovo Inserimento";
+            document.getElementById('sottotitolo-inserimento').innerText = attivo ? attivo.nome : "";
+            document.getElementById('importo').value = '';
+            document.getElementById('descrizione').value = '';
+            document.getElementById('testo-bottone').innerText = "Registra Spesa";
+            cambiaSchermata('view-inserimento');
+        }
+
+        function cambiaSchermata(viewId) {
+            if (viewId === 'view-inserimento') {
+                document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+                document.getElementById('view-inserimento').classList.remove('hidden');
+                return;
+            }
+            document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+            const dest = document.getElementById(viewId);
+            if(dest) dest.classList.remove('hidden');
+            
+            document.getElementById('nav-home').className = viewId === 'view-home' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
+            document.getElementById('nav-movimenti').className = viewId === 'view-movimenti' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
+        }
+
+        function tornaAllaHome() { cambiaSchermata('view-home'); generaGrigliaCategorie(); }
+
+        function verificaEAttivaPIN() {
+            const inputField = document.getElementById('input-pin');
+            const pinInserito = inputField.value.trim();
+            if (pinInserito === PIN_ACCESSO_FAMIGLIA || pinInserito === "2026") {
+                sessionStorage.setItem('app_is_unlocked', "true");
+                document.getElementById('schermata-pin').style.display = 'none';
+                document.getElementById('schermata-pin').classList.add('hidden');
+                inputField.value = '';
+                mostraNotifica("Accesso autorizzato ✓");
+                caricaMovimentiDati().then(() => aggiornaTotaleMese());
+            } else {
+                alert("PIN Errato! Accesso negato.");
+                inputField.value = '';
+            }
+        }
 
         async function caricaMovimentiDati() {
             try {
                 const res = await fetch(WEB_APP_URL);
                 const r = await res.json();
-                if (r.status === 'success') { cacheMovimenti = r.dati; renderListaMovimenti(); return r.dati; }
-            } catch (e) { console.error(e); }
+                if (r.status === 'success') { 
+                    cacheMovimenti = r.dati; 
+                    renderListaMovimenti(); 
+                    aggiornaTotaleMese();
+                    return r.dati; 
+                }
+            } catch (e) { console.error("Errore caricamento:", e); }
             return [];
-        }
-
-        async function aggiornaTotaleMese() {
-            const movimenti = cacheMovimenti.length > 0 ? cacheMovimenti : await caricaMovimentiDati();
-            const meseCorrente = new Date().getMonth();
-            const annoCorrente = new Date().getFullYear();
-            let totale = 0;
-            movimenti.forEach(m => {
-                const parti = m.data.split(' ')[0].split('/');
-                const dataM = new Date(parti[2], parti[1] - 1, parti[0]);
-                if (dataM.getMonth() === meseCorrente && dataM.getFullYear() === annoCorrente && m.tipo === 'Uscita') { totale += parseFloat(m.importo); }
-            });
-            document.getElementById('totale-mese').innerText = `€ ${totale.toFixed(2)}`;
         }
 
         function renderListaMovimenti() {
@@ -352,17 +289,11 @@ async function gestisciCambioPIN() {
                 lista.innerHTML = `<p class="text-center text-slate-500 text-sm pt-8">Nessun movimento trovato.</p>`; 
                 return; 
             }
-            
             lista.innerHTML = '';
             cacheMovimenti.forEach(m => {
                 const div = document.createElement('div');
-                // Aggiunto 'touch-events' ottimizzati per smartphone
                 div.className = "bg-slate-800/60 border border-slate-800 p-3.5 rounded-xl flex justify-between items-center cursor-pointer active:scale-[0.98] transition-all select-none touch-manipulation";
-                
-                // Aggancio nativo JavaScript della funzione a prova di smartphone
-                div.onclick = function() {
-                    apriModalGestione(m.id);
-                };
+                div.onclick = function() { apriModalGestione(m.id); };
                 
                 const colorImporto = m.tipo === 'Entrata' ? 'text-teal-400' : 'text-slate-200';
                 const segnoImporto = m.tipo === 'Entrata' ? '+' : '';
@@ -381,10 +312,45 @@ async function gestisciCambioPIN() {
             });
         }
 
-        function apriElencoMovimenti() { cambiaSchermata('view-elenco'); renderListaMovimenti(); caricaMovimentiDati().then(() => renderListaMovimenti()); }
+        function aggiornaTotaleMese() {
+            let totale = 0;
+            cacheMovimenti.forEach(m => {
+                if (m.tipo === 'Uscita' || m.tipo === 'Uscite') {
+                    totale += parseFloat(m.importo);
+                }
+            });
+            document.getElementById('totale-mese').innerText = `€ ${totale.toFixed(2)}`;
+        }
+
+        function apriModalGestione(idMovimento) {
+            movimentoSelezionatoId = idMovimento;
+            const m = cacheMovimenti.find(item => String(item.id) === String(idMovimento));
+            if (!m) return;
+            document.getElementById('modal-titolo').innerText = `€ ${parseFloat(m.importo).toFixed(2)}`;
+            document.getElementById('modal-dettaglio').innerText = `${m.descrizione} (${m.categoria})`;
+            const modal = document.getElementById('modal-gestione');
+            modal.classList.remove('hidden');
+        }
+
+        function chiudiModal() { document.getElementById('modal-gestione').classList.add('hidden'); }
+
+        function attivaModificaMovimento() {
+            const m = cacheMovimenti.find(item => String(item.id) === String(movimentoSelezionatoId));
+            chiudiModal();
+            if (!m) return;
+            modoModifica = true;
+            categoriaSelezionata = m.categoria;
+            selezionaAutore(m.autore.toLowerCase());
+            
+            document.getElementById('titolo-inserimento').innerText = "Modifica Movimento";
+            document.getElementById('sottotitolo-inserimento').innerText = m.categoria;
+            document.getElementById('importo').value = parseFloat(m.importo);
+            document.getElementById('descrizione').value = m.descrizione;
+            document.getElementById('testo-bottone').innerText = "Salva Modifiche";
+            cambiaSchermata('view-inserimento');
+        }
 
         async function salvaSpesa() {
-            if (sessionStorage.getItem('app_is_unlocked') !== "true") return;
             const importoInput = document.getElementById('importo');
             const descrizioneInput = document.getElementById('descrizione');
             const btnInvia = document.getElementById('btn-invia');
@@ -392,10 +358,8 @@ async function gestisciCambioPIN() {
             
             const importo = parseFloat(importoInput.value.replace(',', '.'));
             const descrizione = descrizioneInput.value || (categoriaSelezionata === 'Entrate' ? "Entrata generica" : "Spesa generica");
-
             if (isNaN(importo) || importo <= 0) { alert("Inserisci un importo valido!"); return; }
 
-            // Costruiamo il pacchetto dati pulito per Google Script
             const dati = {
                 token: TOKEN_SEGRETO,
                 azione: modoModifica ? "modifica" : "inserisci",
@@ -411,92 +375,48 @@ async function gestisciCambioPIN() {
             testoBottone.innerText = "Elaborazione...";
 
             try {
-                // Inviamo i dati a Google Apps Script
-                await fetch(WEB_APP_URL, { 
-                    method: 'POST', 
-                    mode: 'no-cors', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(dati) 
-                });
-                
-                testoBottone.innerText = modoModifica ? "Modificata! ✓" : "Registrata! ✓";
-                
-                // AZZERAMENTO CACHE: Forza l'app a scaricare i dati reali modificati da Google
-                cacheMovimenti = [];
-                
+                await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(dati) });
+                mostraNotifica(modoModifica ? "Modifica completata" : "Spesa registrata");
                 setTimeout(async () => {
-                    // Ricarica i dati freschi da Google prima di tornare in Home
                     await caricaMovimentiDati();
                     tornaAllaHome();
                     btnInvia.disabled = false;
-                }, 1200);
-                
-            } catch (e) { 
-                alert("Errore durante il salvataggio."); 
-                btnInvia.disabled = false; 
-                testoBottone.innerText = modoModifica ? "Salva Modifiche" : "Registra Spesa";
-            }
-        }
-
-        function apriModalGestione(idMovimento) {
-            movimentoSelezionatoId = idMovimento;
-            // Cerchiamo il movimento allineando i tipi di dato (stringa o numero)
-            const movimento = cacheMovimenti.find(item => String(item.id) === String(idMovimento));
-            
-            if (!movimento) {
-                console.error("Movimento non trovato in cache per ID:", idMovimento);
-                return;
-            }
-
-            document.getElementById('modal-titolo').innerText = `€ ${parseFloat(movimento.importo).toFixed(2)}`;
-            document.getElementById('modal-dettaglio').innerText = `${movimento.descrizione} (${movimento.categoria})`;
-            
-            // Mostra il modal rimuovendo la classe 'hidden' di Tailwind
-            const modal = document.getElementById('modal-gestione');
-            modal.classList.remove('hidden');
-            modal.style.display = 'flex'; // Forza l'apparizione visiva nativa
-        }
-
-        function chiudiModal() { 
-            const modal = document.getElementById('modal-gestione');
-            modal.classList.add('hidden'); 
-            modal.style.display = 'none';
-        }
-        function attivaModificaMovimento() {
-            const m = cacheMovimenti.find(item => item.id === movimentoSelezionatoId);
-            chiudiModal(); if (!m) return;
-            modoModifica = true;
-            document.getElementById('titolo-inserimento').innerText = "Modifica Movimento";
-            document.getElementById('testo-bottone').innerText = "Salva Modifiche";
-            document.getElementById('importo').value = m.importo;
-            document.getElementById('descrizione').value = m.descrizione;
-            setAutore(m.autore); setCategoria(m.categoria);
-            cambiaSchermata('view-inserimento');
+                }, 1000);
+            } catch (e) { alert("Errore di rete."); btnInvia.disabled = false; }
         }
 
         async function eliminaMovimentoSelezionato() {
             if (!confirm("Vuoi davvero eliminare questo movimento?")) return;
             chiudiModal();
-            const dati = { token: TOKEN_SEGRETO, azione: "elimina", id: movimentoSelezionatoId };
+            mostraNotifica("Eliminazione in corso...");
             try {
-                document.getElementById('lista-movimenti').innerHTML = `<p class="text-center text-slate-500 text-sm pt-8">Eliminazione...</p>`;
-                await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dati) });
-                cacheMovimenti = [];
-                await caricaMovimentiDati(); renderListaMovimenti(); aggiornaTotaleMese();
-            } catch (e) { alert("Errore."); caricaMovimentiDati().then(() => renderListaMovimenti()); }
+                await fetch(WEB_APP_URL, { 
+                    method: 'POST', 
+                    mode: 'no-cors', 
+                    body: JSON.stringify({ token: TOKEN_SEGRETO, azione: "elimina", id: String(movimentoSelezionatoId) }) 
+                });
+                await caricaMovimentiDati();
+                mostraNotifica("Eliminato con successo ✓");
+            } catch (e) { alert("Errore durante l'eliminazione."); }
         }
 
-        function cambiaSchermata(idView) {
-            document.querySelectorAll('.schermata-app').forEach(v => {
-                v.classList.remove('attiva-visibile');
-            });
-            document.getElementById(idView).classList.add('attiva-visibile');
+        async function forzaSincronizzazione() {
+            mostraNotifica("Aggiornamento dati...");
+            await caricaMovimentiDati();
+            mostraNotifica("Dati aggiornati ✓");
         }
 
-        controllaAccesso();
+        function mostraNotifica(testo) {
+            const bar = document.getElementById('status-bar');
+            document.getElementById('status-text').innerText = testo;
+            bar.classList.remove('hidden');
+            setTimeout(() => bar.classList.add('hidden'), 2500);
+        }
 
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').then(() => console.log('PWA Ready'));
+        function effettuaLogOut() {
+            sessionStorage.clear();
+            localStorage.clear();
+            window.location.reload();
         }
     </script>
 </body>

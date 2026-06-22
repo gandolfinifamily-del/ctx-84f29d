@@ -281,14 +281,32 @@
 
         function renderListaMovimenti() {
             const lista = document.getElementById('lista-movimenti');
-            if (cacheMovimenti.length === 0) { lista.innerHTML = `<p class="text-center text-slate-500 text-sm pt-8">Nessun movimento.</p>`; return; }
+            if (!cacheMovimenti || cacheMovimenti.length === 0) { 
+                lista.innerHTML = `<p class="text-center text-slate-500 text-sm pt-8">Nessun movimento trovato.</p>`; 
+                return; 
+            }
+            
             lista.innerHTML = '';
             cacheMovimenti.forEach(m => {
                 const div = document.createElement('div');
-                div.className = "bg-slate-800/60 border border-slate-800 p-3.5 rounded-xl flex justify-between items-center active:scale-[0.99]";
-                div.onclick = () => apriModalGestione(m);
+                div.className = "bg-slate-800/60 border border-slate-800 p-3.5 rounded-xl flex justify-between items-center cursor-pointer active:scale-[0.98] transition-all";
+                
+                // Forza la lettura dell'ID stringa racchiudendolo tra apici singoli
+                div.setAttribute('onclick', `apriModalGestione('${m.id}')`);
+                
                 const colorImporto = m.tipo === 'Entrata' ? 'text-teal-400' : 'text-slate-200';
-                div.innerHTML = `<div><p class="font-semibold text-sm text-slate-200">${m.descrizione}</p><p class="text-[11px] text-slate-400">${m.data.split(' ')[0]} • <span class="capitalize text-slate-500">${m.autore.toLowerCase()}</span></p></div><div class="text-right"><p class="font-bold text-sm ${colorImporto}">${m.tipo==='Entrata'?'+':''}€ ${parseFloat(m.importo).toFixed(2)}</p><p class="text-[10px] bg-slate-700/60 text-slate-400 px-2 py-0.5 rounded-md inline-block">${m.categoria}</p></div>`;
+                const segnoImporto = m.tipo === 'Entrata' ? '+' : '';
+                
+                div.innerHTML = `
+                    <div class="pointer-events-none">
+                        <p class="font-semibold text-sm text-slate-200">${m.descrizione}</p>
+                        <p class="text-[11px] text-slate-400">${m.data.split(' ')[0]} • <span class="capitalize text-slate-500">${m.autore.toLowerCase()}</span></p>
+                    </div>
+                    <div class="text-right pointer-events-none">
+                        <p class="font-bold text-sm ${colorImporto}">${segnoImporto}€ ${parseFloat(m.importo).toFixed(2)}</p>
+                        <p class="text-[10px] bg-slate-700/60 text-slate-400 px-2 py-0.5 rounded-md inline-block">${m.categoria}</p>
+                    </div>
+                `;
                 lista.appendChild(div);
             });
         }
@@ -329,14 +347,30 @@
             } catch (e) { alert("Errore connessione."); btnInvia.disabled = false; }
         }
 
-        function apriModalGestione(movimento) {
-            movimentoSelezionatoId = movimiento.id;
+        function apriModalGestione(idMovimento) {
+            movimentoSelezionatoId = idMovimento;
+            // Cerchiamo il movimento allineando i tipi di dato (stringa o numero)
+            const movimento = cacheMovimenti.find(item => String(item.id) === String(idMovimento));
+            
+            if (!movimento) {
+                console.error("Movimento non trovato in cache per ID:", idMovimento);
+                return;
+            }
+
             document.getElementById('modal-titolo').innerText = `€ ${parseFloat(movimento.importo).toFixed(2)}`;
             document.getElementById('modal-dettaglio').innerText = `${movimento.descrizione} (${movimento.categoria})`;
-            document.getElementById('modal-gestione').classList.remove('hidden');
+            
+            // Mostra il modal rimuovendo la classe 'hidden' di Tailwind
+            const modal = document.getElementById('modal-gestione');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex'; // Forza l'apparizione visiva nativa
         }
-        function chiudiModal() { document.getElementById('modal-gestione').classList.add('hidden'); }
 
+        function chiudiModal() { 
+            const modal = document.getElementById('modal-gestione');
+            modal.classList.add('hidden'); 
+            modal.style.display = 'none';
+        }
         function attivaModificaMovimento() {
             const m = cacheMovimenti.find(item => item.id === movimentoSelezionatoId);
             chiudiModal(); if (!m) return;

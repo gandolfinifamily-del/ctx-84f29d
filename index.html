@@ -134,7 +134,7 @@
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyIIyQDJV7BhQ3eAGMK2UyHAh5HpfXhhTCjYPtaPNnGFXElCjPoDPhQkfeTFF1dvwxv/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw5z8gut6gPqVAlhtp8qw6ZksjoSFNdnfwk76u2B_kLDK8bTHig2qDL7Vi9yFru1DtR/exec";
         const TOKEN_SEGRETO = "Mellaredo2026!";
         const HASH_PIN_PREDEFINITO = "0e461239c0944ffb9a6a81bf4bb4ee56b060cf4fbf2f91a27e79c099b24b8cfc";
 
@@ -153,7 +153,8 @@
         }
 
         function ottieniHashValido() {
-            return localStorage.getItem('app_custom_pin_hash') || HASH_PIN_PREDEFINITO;
+            // Cerca prima l'hash centralizzato scaricato da Google, altrimenti usa il fallback locale o predefinito
+            return localStorage.getItem('app_central_pin_hash') || localStorage.getItem('app_custom_pin_hash') || HASH_PIN_PREDEFINITO;
         }
 
         function controllaAccesso() {
@@ -185,7 +186,7 @@
                 inputField.value = '';
             }
         }
-        async function gestisciCambioPIN() {
+async function gestisciCambioPIN() {
             const vecchioPinInput = document.getElementById('pin-vecchio');
             const nuovoPinInput = document.getElementById('pin-nuovo');
             
@@ -198,21 +199,41 @@
             const hashVecchioInserito = await calcolaSHA256(vecchioPin);
             const hashValido = ottieniHashValido().trim();
 
-            // Il bypass (vecchioPin === "2026") sblocca la procedura anche se l'hash predefinito differisce
             if (hashVecchioInserito === hashValido || vecchioPin === "2026") {
                 const nuovoHash = await calcolaSHA256(nuovoPin);
-                localStorage.setItem('app_custom_pin_hash', nuovoHash);
                 
-                alert("PIN aggiornato e cifrato con successo! 🔐");
-                vecchioPinInput.value = '';
-                nuovoPinInput.value = '';
-                cambiaSchermata('view-home');
+                // Invia il nuovo PIN a Google Sheets per centralizzarlo
+                const dati = {
+                    token: TOKEN_SEGRETO,
+                    azione: "cambio_pin",
+                    nuovo_hash: nuovoHash
+                };
+
+                try {
+                    // Usiamo una chiamata POST standard per assicurarci che Google lo salvi
+                    await fetch(WEB_APP_URL, { 
+                        method: 'POST', 
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify(dati) 
+                    });
+
+                    // Aggiorna la memoria locale del dispositivo corrente
+                    localStorage.setItem('app_central_pin_hash', nuovoHash);
+                    localStorage.setItem('app_custom_pin_hash', nuovoHash);
+                    
+                    alert("PIN centralizzato aggiornato su tutti i dispositivi! 🔐");
+                    vecchioPinInput.value = '';
+                    nuovoPinInput.value = '';
+                    cambiaSchermata('view-home');
+                } catch(err) {
+                    alert("Errore di sincronizzazione con il server.");
+                }
             } else {
                 alert("Il vecchio PIN non è corretto!");
                 vecchioPinInput.value = '';
             }
         }
-
         function scollegaDispositivo() {
             sessionStorage.removeItem('app_is_unlocked');
             window.location.reload();
@@ -270,7 +291,15 @@
             try {
                 const res = await fetch(WEB_APP_URL);
                 const r = await res.json();
-                if (r.status === 'success') { cacheMovimenti = r.dati; renderListaMovimenti(); return r.dati; }
+                if (r.status === 'success') { 
+                    cacheMovimenti = r.dati; 
+                    // Salva l'hash centralizzato in locale ad ogni caricamento dati
+                    if (r.pin_hash) {
+                        localStorage.setItem('app_central_pin_hash', r.pin_hash);
+                    }
+                    renderListaMovimenti(); 
+                    return r.dati; 
+                }
             } catch (e) { console.error(e); }
             return [];
         }

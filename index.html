@@ -289,10 +289,13 @@
             lista.innerHTML = '';
             cacheMovimenti.forEach(m => {
                 const div = document.createElement('div');
-                div.className = "bg-slate-800/60 border border-slate-800 p-3.5 rounded-xl flex justify-between items-center cursor-pointer active:scale-[0.98] transition-all";
+                // Aggiunto 'touch-events' ottimizzati per smartphone
+                div.className = "bg-slate-800/60 border border-slate-800 p-3.5 rounded-xl flex justify-between items-center cursor-pointer active:scale-[0.98] transition-all select-none touch-manipulation";
                 
-                // Forza la lettura dell'ID stringa racchiudendolo tra apici singoli
-                div.setAttribute('onclick', `apriModalGestione('${m.id}')`);
+                // Aggancio nativo JavaScript della funzione a prova di smartphone
+                div.onclick = function() {
+                    apriModalGestione(m.id);
+                };
                 
                 const colorImporto = m.tipo === 'Entrata' ? 'text-teal-400' : 'text-slate-200';
                 const segnoImporto = m.tipo === 'Entrata' ? '+' : '';
@@ -325,10 +328,11 @@
 
             if (isNaN(importo) || importo <= 0) { alert("Inserisci un importo valido!"); return; }
 
+            // Costruiamo il pacchetto dati pulito per Google Script
             const dati = {
                 token: TOKEN_SEGRETO,
                 azione: modoModifica ? "modifica" : "inserisci",
-                id: modoModifica ? movimentoSelezionatoId : undefined,
+                id: modoModifica ? String(movimentoSelezionatoId) : undefined,
                 importo: importo.toFixed(2),
                 descrizione: descrizione,
                 categoria: categoriaSelezionata,
@@ -340,11 +344,31 @@
             testoBottone.innerText = "Elaborazione...";
 
             try {
-                await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dati) });
+                // Inviamo i dati a Google Apps Script
+                await fetch(WEB_APP_URL, { 
+                    method: 'POST', 
+                    mode: 'no-cors', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(dati) 
+                });
+                
                 testoBottone.innerText = modoModifica ? "Modificata! ✓" : "Registrata! ✓";
+                
+                // AZZERAMENTO CACHE: Forza l'app a scaricare i dati reali modificati da Google
                 cacheMovimenti = [];
-                setTimeout(() => { tornaAllaHome(); btnInvia.disabled = false; }, 1000);
-            } catch (e) { alert("Errore connessione."); btnInvia.disabled = false; }
+                
+                setTimeout(async () => {
+                    // Ricarica i dati freschi da Google prima di tornare in Home
+                    await caricaMovimentiDati();
+                    tornaAllaHome();
+                    btnInvia.disabled = false;
+                }, 1200);
+                
+            } catch (e) { 
+                alert("Errore durante il salvataggio."); 
+                btnInvia.disabled = false; 
+                testoBottone.innerText = modoModifica ? "Salva Modifiche" : "Registra Spesa";
+            }
         }
 
         function apriModalGestione(idMovimento) {

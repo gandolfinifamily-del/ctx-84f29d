@@ -325,15 +325,7 @@ async function gestisciCambioPIN() {
             try {
                 const res = await fetch(WEB_APP_URL);
                 const r = await res.json();
-                if (r.status === 'success') { 
-                    cacheMovimenti = r.dati; 
-                    // Salva l'hash centralizzato in locale ad ogni caricamento dati
-                    if (r.pin_hash) {
-                        localStorage.setItem('app_central_pin_hash', r.pin_hash);
-                    }
-                    renderListaMovimenti(); 
-                    return r.dati; 
-                }
+                if (r.status === 'success') { cacheMovimenti = r.dati; renderListaMovimenti(); return r.dati; }
             } catch (e) { console.error(e); }
             return [];
         }

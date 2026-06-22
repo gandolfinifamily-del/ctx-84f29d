@@ -247,27 +247,30 @@ async function gestisciCambioPIN() {
                 };
 
                 try {
-                    // Sincronizza il nuovo PIN direttamente sul Cloud
+                    // Usiamo 'no-cors' per aggirare i blocchi del browser sul cambio PIN
                     await fetch(WEB_APP_URL, { 
                         method: 'POST', 
+                        mode: 'no-cors',
                         headers: { 'Content-Type': 'application/json' }, 
                         body: JSON.stringify(dati) 
                     });
 
+                    // Salviamo subito il nuovo hash localmente sul dispositivo corrente
                     localStorage.setItem('app_central_pin_hash', nuovoHash);
                     
-                    alert("PIN centralizzato aggiornato su tutti i dispositivi! 🔐");
+                    alert("Richiesta di cambio PIN inviata! Il cloud si aggiornerà in pochi secondi. 🔐");
                     vecchioPinInput.value = '';
                     nuovoPinInput.value = '';
                     cambiaSchermata('view-home');
                 } catch(err) {
-                    alert("Errore di sincronizzazione con il server Google.");
+                    alert("Errore nell'invio dei dati.");
                 }
             } else {
                 alert("Il vecchio PIN non è corretto!");
                 vecchioPinInput.value = '';
             }
         }
+        
         function scollegaDispositivo() {
             sessionStorage.removeItem('app_is_unlocked');
             window.location.reload();

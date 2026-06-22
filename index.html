@@ -350,14 +350,14 @@
             cambiaSchermata('view-inserimento');
         }
 
-        async function salvaSpesa() {
+async function salvaSpesa() {
             const importoInput = document.getElementById('importo');
             const descrizioneInput = document.getElementById('descrizione');
             const btnInvia = document.getElementById('btn-invia');
             const testoBottone = document.getElementById('testo-bottone');
             
             const importo = parseFloat(importoInput.value.replace(',', '.'));
-            const descrizione = descrizioneInput.value || (categoriaSelezionata === 'Entrate' ? "Entrata generica" : "Spesa generica");
+            const descrizione = descrizioneInput.value.trim() || (categoriaSelezionata === 'Entrate' ? "Entrata generica" : "Spesa generica");
             if (isNaN(importo) || importo <= 0) { alert("Inserisci un importo valido!"); return; }
 
             const dati = {
@@ -382,7 +382,10 @@
                     tornaAllaHome();
                     btnInvia.disabled = false;
                 }, 1000);
-            } catch (e) { alert("Errore di rete."); btnInvia.disabled = false; }
+            } catch (e) { 
+                alert("Errore di rete."); 
+                btnInvia.disabled = false; 
+            }
         }
 
         async function eliminaMovimentoSelezionato() {

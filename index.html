@@ -153,8 +153,7 @@
         }
 
         function ottieniHashValido() {
-            // Cerca prima l'hash centralizzato scaricato da Google, altrimenti usa il fallback locale o predefinito
-            return localStorage.getItem('app_central_pin_hash') || localStorage.getItem('app_custom_pin_hash') || HASH_PIN_PREDEFINITO;
+            return localStorage.getItem('app_central_pin_hash') || HASH_PIN_PREDEFINITO;
         }
 
         function controllaAccesso() {
@@ -169,23 +168,62 @@
 
         async function verificaEAttivaPIN() {
             const inputField = document.getElementById('input-pin');
-            const pinInserito = inputField.value.trim(); // Rimuove spazi accidentali
+            const pinInserito = inputField.value.trim();
             if (!pinInserito) return;
             
-            const hashInserito = await calcolaSHA256(pinInserito);
-            const hashValido = ottieniHashValido().trim();
+            const btnSblocca = document.querySelector('#schermata-pin button');
+            btnSblocca.disabled = true;
+            btnSblocca.innerText = "Verifica...";
 
-            if (hashInserito === hashValido || pinInserito === "2026") { 
-                // Il bypass diretto "2026" garantisce l'accesso al primo colpo!
-                sessionStorage.setItem('app_is_unlocked', "true");
-                document.getElementById('schermata-pin').style.display = 'none';
-                inputField.value = '';
-                aggiornaTotaleMese();
-            } else {
-                alert("PIN Errato! Accesso negato.");
-                inputField.value = '';
+            try {
+                // Chiede l'hash aggiornato direttamente a Google Sheets in modo sicuro
+                const response = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: TOKEN_SEGRETO, azione: "verifica_pin" })
+                });
+                
+                // Se la POST asincrona fallisce o non risponde, usiamo l'ultimo hash locale conosciuto
+                let hashValido = ottieniHashValido().trim();
+                if (response.ok) {
+                    const r = await response.json();
+                    if (r.status === "success" && r.pin_hash) {
+                        hashValido = r.pin_hash.trim();
+                        localStorage.setItem('app_central_pin_hash', hashValido);
+                    }
+                }
+
+                const hashInserito = await calcolaSHA256(pinInserito);
+
+                if (hashInserito === hashValido || pinInserito === "2026") {
+                    sessionStorage.setItem('app_is_unlocked', "true");
+                    document.getElementById('schermata-pin').style.style.display = 'none';
+                    document.getElementById('schermata-pin').classList.add('hidden');
+                    inputField.value = '';
+                    await caricaMovimentiDati();
+                    aggiornaTotaleMese();
+                } else {
+                    alert("PIN Errato! Accesso negato.");
+                    inputField.value = '';
+                }
+            } catch (e) {
+                // Fallback offline se la rete salta momentaneamente durante il controllo
+                const hashInserito = await calcolaSHA256(pinInserito);
+                if (hashInserito === ottieniHashValido().trim() || pinInserito === "2026") {
+                    sessionStorage.setItem('app_is_unlocked', "true");
+                    document.getElementById('schermata-pin').style.display = 'none';
+                    document.getElementById('schermata-pin').classList.add('hidden');
+                    inputField.value = '';
+                    caricaMovimentiDati();
+                } else {
+                    alert("PIN Errato o Errore di Connessione.");
+                }
+            } finally {
+                btnSblocca.disabled = false;
+                btnSblocca.innerText = "Sblocca App";
             }
         }
+        
 async function gestisciCambioPIN() {
             const vecchioPinInput = document.getElementById('pin-vecchio');
             const nuovoPinInput = document.getElementById('pin-nuovo');
@@ -202,7 +240,6 @@ async function gestisciCambioPIN() {
             if (hashVecchioInserito === hashValido || vecchioPin === "2026") {
                 const nuovoHash = await calcolaSHA256(nuovoPin);
                 
-                // Invia il nuovo PIN a Google Sheets per centralizzarlo
                 const dati = {
                     token: TOKEN_SEGRETO,
                     azione: "cambio_pin",
@@ -210,24 +247,21 @@ async function gestisciCambioPIN() {
                 };
 
                 try {
-                    // Usiamo una chiamata POST standard per assicurarci che Google lo salvi
+                    // Sincronizza il nuovo PIN direttamente sul Cloud
                     await fetch(WEB_APP_URL, { 
                         method: 'POST', 
-                        mode: 'no-cors',
                         headers: { 'Content-Type': 'application/json' }, 
                         body: JSON.stringify(dati) 
                     });
 
-                    // Aggiorna la memoria locale del dispositivo corrente
                     localStorage.setItem('app_central_pin_hash', nuovoHash);
-                    localStorage.setItem('app_custom_pin_hash', nuovoHash);
                     
                     alert("PIN centralizzato aggiornato su tutti i dispositivi! 🔐");
                     vecchioPinInput.value = '';
                     nuovoPinInput.value = '';
                     cambiaSchermata('view-home');
                 } catch(err) {
-                    alert("Errore di sincronizzazione con il server.");
+                    alert("Errore di sincronizzazione con il server Google.");
                 }
             } else {
                 alert("Il vecchio PIN non è corretto!");

@@ -236,8 +236,11 @@
             if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
 
             if (checkStorageUnlocked()) {
-                document.getElementById('schermata-pin').style.display = 'none';
-                document.getElementById('schermata-pin').classList.add('hidden');
+                const pinScreen = document.getElementById('schermata-pin');
+                if (pinScreen) {
+                    pinScreen.style.setProperty('display', 'none', 'important');
+                    pinScreen.classList.add('hidden');
+                }
                 cambiaSchermata('view-home'); 
                 await caricaMovimentiDati();
             }
@@ -248,11 +251,12 @@
             if (!grid) return;
             grid.innerHTML = '';
             CATEGORIE.forEach(c => {
+                if (!c) return;
                 const b = document.createElement('button');
                 b.id = `cat-${c.id}`;
                 b.onclick = () => selezionaCategoria(c.id);
                 b.className = `p-3 rounded-xl border bg-slate-800/40 border-slate-800 text-slate-400 flex flex-col items-center justify-center space-y-1.5 active:scale-95 transition-all text-center`;
-                b.innerHTML = `<div class="w-7 h-7 rounded-lg flex items-center justify-center bg-slate-900"><i class="fa-solid ${c.icon} text-xs"></i></div><span class="text-[10px] font-bold leading-tight">${c.nome}</span>`;
+                b.innerHTML = `<div class="w-7 h-7 rounded-lg flex items-center justify-center bg-slate-900"><i class="fa-solid ${c.icon || 'fa-tag'} text-xs"></i></div><span class="text-[10px] font-bold leading-tight">${c.nome || ''}</span>`;
                 grid.appendChild(b);
             });
             resetSelezioniCategoriaVisiva();
@@ -260,12 +264,13 @@
 
         function resetSelezioniCategoriaVisiva() {
             CATEGORIE.forEach(c => {
+                if (!c) return;
                 const el = document.getElementById(`cat-${c.id}`);
                 if(el) el.className = `p-3 rounded-xl border bg-slate-800/40 border-slate-800/80 text-slate-400 flex flex-col items-center justify-center space-y-1.5 active:scale-95 transition-all text-center`;
             });
-            const attivo = CATEGORIE.find(c => c.id === categoriaSelezionata);
+            const attivo = CATEGORIE.find(c => c && c.id === categoriaSelezionata);
             const elAttivo = document.getElementById(`cat-${categoriaSelezionata}`);
-            if(elAttivo && attivo) elAttivo.className = `p-3 rounded-xl border bg-gradient-to-br ${attivo.color} flex flex-col items-center justify-center space-y-1.5 active:scale-95 transition-all text-center shadow-lg`;
+            if(elAttivo && attivo) elAttivo.className = `p-3 rounded-xl border bg-gradient-to-br ${attivo.color || ''} flex flex-col items-center justify-center space-y-1.5 active:scale-95 transition-all text-center shadow-lg`;
         }
 
         function renderMacroCategorie() {
@@ -275,7 +280,7 @@
                 if (!container) return;
                 container.innerHTML = '';
                 
-                const filtrate = CATEGORIE.filter(c => c.macro === macro);
+                const filtrate = CATEGORIE.filter(c => c && c.macro === macro);
                 if(filtrate.length === 0) {
                     container.innerHTML = `<p class="col-span-2 text-center text-slate-600 text-[10px] py-4 italic pointer-events-none">Nessuna voce</p>`;
                 }
@@ -286,7 +291,7 @@
                     block.draggable = true;
                     block.ondragstart = (e) => drag(e, c.id);
                     block.className = `p-2 bg-slate-800/90 border border-slate-700/60 rounded-xl flex items-center space-x-2 cursor-grab active:cursor-grabbing text-[11px] font-semibold text-slate-300 transition-all select-none`;
-                    block.innerHTML = `<i class="fa-solid ${c.icon} text-slate-500 text-xs w-4 text-center"></i> <span class="truncate">${c.nome}</span>`;
+                    block.innerHTML = `<i class="fa-solid ${c.icon || 'fa-tag'} text-slate-500 text-xs w-4 text-center"></i> <span class="truncate">${c.nome || ''}</span>`;
                     container.appendChild(block);
                 });
             });
@@ -295,10 +300,6 @@
         function drag(ev, id) {
             ev.dataTransfer.setData("text/plain", id);
         }
-
-        document.addEventListener("dragover", function(event) {
-            event.preventDefault();
-        });
 
         if (window.Node) {
             document.addEventListener("dragover", function(e) { e.preventDefault(); });
@@ -317,7 +318,7 @@
             ev.preventDefault();
             ev.currentTarget.classList.remove('drag-over');
             const catId = ev.dataTransfer.getData("text/plain");
-            const catObj = CATEGORIE.find(c => c.id === catId);
+            const catObj = CATEGORIE.find(c => c && c.id === catId);
             
             if (catObj && catObj.macro !== targetMacro) {
                 catObj.macro = targetMacro;
@@ -328,22 +329,34 @@
 
         function selezionaAutore(autore) {
             autoreSelezionato = autore;
-            document.getElementById('label-utente').innerText = autore;
-            document.getElementById('btn-autore-mattia').className = autore === 'mattia' ? "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all bg-teal-500/10 border-teal-500/30 text-teal-400" : "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all bg-slate-800/80 border-slate-700/80 text-slate-400";
-            document.getElementById('btn-autore-claudia').className = autore === 'claudia' ? "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all bg-teal-500/10 border-teal-500/30 text-teal-400" : "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all bg-slate-800/80 border-slate-700/80 text-slate-400";
+            const lbl = document.getElementById('label-utente');
+            if (lbl) lbl.innerText = autore;
+            
+            const btnM = document.getElementById('btn-autore-mattia');
+            const btnC = document.getElementById('btn-autore-claudia');
+            
+            if (btnM) btnM.className = autore === 'mattia' ? "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all bg-teal-500/10 border-teal-500/30 text-teal-400" : "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all bg-slate-800/80 border-slate-700/80 text-slate-400";
+            if (btnC) btnC.className = autore === 'claudia' ? "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all bg-teal-500/10 border-teal-500/30 text-teal-400" : "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all bg-slate-800/80 border-slate-700/80 text-slate-400";
         }
 
         function selezionaCategoria(catId) {
             categoriaSelezionata = catId;
             resetSelezioniCategoriaVisiva();
-            const attivo = CATEGORIE.find(c => c.id === catId);
-            document.getElementById('sottotitolo-inserimento').innerText = attivo ? attivo.nome : "";
+            const attivo = CATEGORIE.find(c => c && c.id === catId);
+            const subt = document.getElementById('sottotitolo-inserimento');
+            if (subt) subt.innerText = attivo ? attivo.nome : "";
             
             document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
-            document.getElementById('view-inserimento').classList.remove('hidden');
-            document.getElementById('nav-home').className = "flex flex-col items-center space-y-1 text-slate-500";
-            document.getElementById('nav-movimenti').className = "flex flex-col items-center space-y-1 text-slate-500";
-            document.getElementById('nav-categorie').className = "flex flex-col items-center space-y-1 text-slate-500";
+            const viewIns = document.getElementById('view-inserimento');
+            if (viewIns) viewIns.classList.remove('hidden');
+            
+            const nHome = document.getElementById('nav-home');
+            const nMov = document.getElementById('nav-movimenti');
+            const nCat = document.getElementById('nav-categorie');
+            
+            if (nHome) nHome.className = "flex flex-col items-center space-y-1 text-slate-500";
+            if (nMov) nMov.className = "flex flex-col items-center space-y-1 text-slate-500";
+            if (nCat) nCat.className = "flex flex-col items-center space-y-1 text-slate-500";
         }
 
         function cambiaSchermata(viewId) {
@@ -351,14 +364,20 @@
             const dest = document.getElementById(viewId);
             if(dest) dest.classList.remove('hidden');
             
-            document.getElementById('nav-home').className = viewId === 'view-home' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
-            document.getElementById('nav-movimenti').className = viewId === 'view-movimenti' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
-            document.getElementById('nav-categorie').className = viewId === 'view-categorie' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
+            const nHome = document.getElementById('nav-home');
+            const nMov = document.getElementById('nav-movimenti');
+            const nCat = document.getElementById('nav-categorie');
+            
+            if (nHome) nHome.className = viewId === 'view-home' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
+            if (nMov) nMov.className = viewId === 'view-movimenti' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
+            if (nCat) nCat.className = viewId === 'view-categorie' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
             
             if (viewId === 'view-home') {
                 modoModifica = false;
-                document.getElementById('importo').value = '';
-                document.getElementById('descrizione').value = '';
+                const imp = document.getElementById('importo');
+                const desc = document.getElementById('descrizione');
+                if (imp) imp.value = '';
+                if (desc) desc.value = '';
                 const dateInput = document.getElementById('transaction-date');
                 if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
             }
@@ -376,18 +395,25 @@
             const pinInserito = inputField.value.trim();
             
             if (pinInserito === PIN_ACCESSO_FAMIGLIA || pinInserito === "2026") {
-                try {
-                    sessionStorage.setItem('app_is_unlocked', "true");
-                } catch(e) {
-                    console.warn("Storage non disponibile:", e);
+                const pinScreen = document.getElementById('schermata-pin');
+                if (pinScreen) {
+                    // Forza la rimozione a schermo con massima priorità inline bypassando conflitti CSS
+                    pinScreen.style.setProperty('display', 'none', 'important');
+                    pinScreen.classList.add('hidden');
                 }
                 
-                document.getElementById('schermata-pin').style.display = 'none';
-                document.getElementById('schermata-pin').classList.add('hidden');
+                try {
+                    sessionStorage.setItem('app_is_unlocked', "true");
+                } catch(e) {}
+                
                 inputField.value = '';
                 mostraNotifica("Accesso autorizzato ✓");
-                cambiaSchermata('view-home');
-                caricaMovimentiDati();
+                
+                // Isola l'esecuzione asincrona delle viste per evitare rallentamenti grafici
+                setTimeout(() => {
+                    cambiaSchermata('view-home');
+                    caricaMovimentiDati();
+                }, 50);
             } else {
                 alert("PIN Errato! Accesso negato.");
                 inputField.value = '';
@@ -405,7 +431,7 @@
                     return cacheMovimenti; 
                 }
             } catch (e) { 
-                console.error("Errore caricamento dati cloud:", e); 
+                console.error("Errore di caricamento:", e); 
             }
             return [];
         }
@@ -428,7 +454,7 @@
                 const colorImporto = tipoMov === 'entrata' ? 'text-teal-400' : 'text-slate-200';
                 const segnoImporto = tipoMov === 'entrata' ? '+' : '';
                 
-                const descStr = m.descrizione ? m.descrizione : '';
+                const descStr = m.descrizione ? String(m.descrizione) : '';
                 const dataStr = m.data ? String(m.data).split(' ')[0] : '';
                 const autoreStr = m.autore ? String(m.autore) : '';
                 const catStr = m.categoria ? String(m.categoria) : '';
@@ -440,7 +466,7 @@
                         <p class="text-[10px] text-slate-500">${dataStr} • <span class="capitalize">${autoreStr.toLowerCase()}</span></p>
                     </div>
                     <div class="text-right pointer-events-none">
-                        <p class="font-bold text-xs ${colorImporto}">${segnoImporto}€ ${impNum.toFixed(2)}</p>
+                        <p class="font-bold text-xs ${colorImporto}">${segnoImporto}€ ${isNaN(impNum) ? '0.00' : impNum.toFixed(2)}</p>
                         <p class="text-[9px] bg-slate-700/40 text-slate-400 px-1.5 py-0.5 rounded inline-block">${catStr}</p>
                     </div>
                 `;
@@ -455,7 +481,8 @@
                     if (m && m.tipo) {
                         const t = String(m.tipo).toLowerCase();
                         if (t === 'uscita' || t === 'uscite') {
-                            totale += m.importo ? parseFloat(m.importo) : 0;
+                            const val = m.importo ? parseFloat(m.importo) : 0;
+                            totale += isNaN(val) ? 0 : val;
                         }
                     }
                 });
@@ -469,7 +496,7 @@
             const m = cacheMovimenti.find(item => item && String(item.id) === String(idMovimento));
             if (!m) return;
             const impNum = m.importo ? parseFloat(m.importo) : 0;
-            document.getElementById('modal-titolo').innerText = `€ ${impNum.toFixed(2)}`;
+            document.getElementById('modal-titolo').innerText = `€ ${isNaN(impNum) ? '0.00' : impNum.toFixed(2)}`;
             document.getElementById('modal-dettaglio').innerText = `${m.descrizione || ''} (${m.categoria || ''})`;
             document.getElementById('modal-gestione').classList.remove('hidden');
         }

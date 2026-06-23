@@ -346,7 +346,6 @@
             const subt = document.getElementById('sottotitolo-inserimento');
             if (subt) subt.innerText = attivo ? attivo.nome : "";
             
-            // Forza il reset dei testi per i nuovi inserimenti
             const titoloIns = document.getElementById('titolo-inserimento');
             const btnText = document.getElementById('testo-bottone');
             if (titoloIns) titoloIns.innerText = "Nuovo Inserimento";
@@ -564,21 +563,15 @@
                 await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(dati) });
                 mostraNotifica(modoModifica ? "Modifica completata" : "Spesa registrata");
                 
-                // Forza l'asincronia lineare sequenziale pulita senza timer volanti
                 await caricaMovimentiDati();
                 tornaAllaHome();
             } catch (e) { 
                 alert("Errore di rete o sincronizzazione cloud fallita."); 
                 console.error(e);
             } finally {
-                // Questo blocco viene eseguito SEMPRE (sia in caso di successo che di crash della fetch)
                 btnInvia.disabled = false;
                 testoBottone.innerText = modoModifica ? "Salva Modifiche" : "Registra Spesa";
             }
-        }
-
-        async function物理eliminaMovimentoSelezionato() {
-            // Riferimento interno di sicurezza
         }
 
         async function eliminaMovimentoSelezionato() {

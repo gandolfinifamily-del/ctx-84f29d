@@ -13,6 +13,8 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; }
         .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 16px); }
         .safe-top { padding-top: env(safe-area-inset-top); }
+        /* Stile di feedback durante il trascinamento */
+        .drag-over { border-color: #2dd4bf !important; background-color: rgba(45, 212, 191, 0.05) !important; }
     </style>
 </head>
 <body class="text-slate-100 select-none antialiased">
@@ -85,6 +87,39 @@
                 <button onclick="forzaSincronizzazione()" class="text-[11px] font-bold text-teal-400 bg-teal-500/5 border border-teal-500/10 px-2.5 py-1 rounded-lg"><i class="fa-solid fa-arrows-rotate mr-1"></i> Sincronizza</button>
             </div>
             <div id="lista-movimenti" class="space-y-2 max-h-[38vh] overflow-y-auto pr-1"></div>
+        </div>
+
+        <div id="view-categorie" class="view-content px-5 py-2 space-y-4 hidden">
+            <div class="flex justify-between items-center pb-1">
+                <h4 class="text-sm font-bold text-slate-300">Classificazione Spese</h4>
+                <p class="text-[10px] text-slate-500">Trascina le voci per riorganizzarle</p>
+            </div>
+
+            <div class="space-y-3.5 max-h-[46vh] overflow-y-auto pr-1">
+                <div class="bg-slate-950/40 border border-slate-800/60 rounded-2xl p-4 space-y-2.5">
+                    <div class="flex items-center space-x-2 text-amber-400">
+                        <i class="fa-solid fa-circle text-[8px]"></i>
+                        <h5 class="text-xs font-bold uppercase tracking-wider">Spese Primarie</h5>
+                    </div>
+                    <div id="macro-PRIMARIE" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 'PRIMARIE')" class="grid grid-cols-2 gap-2 min-h-[70px] p-2 border border-dashed border-slate-800 rounded-xl transition-all"></div>
+                </div>
+
+                <div class="bg-slate-950/40 border border-slate-800/60 rounded-2xl p-4 space-y-2.5">
+                    <div class="flex items-center space-x-2 text-purple-400">
+                        <i class="fa-solid fa-circle text-[8px]"></i>
+                        <h5 class="text-xs font-bold uppercase tracking-wider">Spese Durevoli</h5>
+                    </div>
+                    <div id="macro-DUREVOLI" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 'DUREVOLI')" class="grid grid-cols-2 gap-2 min-h-[70px] p-2 border border-dashed border-slate-800 rounded-xl transition-all"></div>
+                </div>
+
+                <div class="bg-slate-950/40 border border-slate-800/60 rounded-2xl p-4 space-y-2.5">
+                    <div class="flex items-center space-x-2 text-rose-400">
+                        <i class="fa-solid fa-circle text-[8px]"></i>
+                        <h5 class="text-xs font-bold uppercase tracking-wider">Spese Discrezionali</h5>
+                    </div>
+                    <div id="macro-DISCREZIONALI" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 'DISCREZIONALI')" class="grid grid-cols-2 gap-2 min-h-[70px] p-2 border border-dashed border-slate-800 rounded-xl transition-all"></div>
+                </div>
+            </div>
         </div>
 
         <div id="view-inserimento" class="view-content px-5 py-2 space-y-4 hidden">
@@ -161,6 +196,9 @@
             <button id="nav-movimenti" onclick="cambiaSchermata('view-movimenti')" class="flex flex-col items-center space-y-1 text-slate-500">
                 <i class="fa-solid fa-list-ul text-base"></i><span class="text-[10px] font-bold">Movimenti</span>
             </button>
+            <button id="nav-categorie" onclick="cambiaSchermata('view-categorie')" class="flex flex-col items-center space-y-1 text-slate-500">
+                <i class="fa-solid fa-tags text-base"></i><span class="text-[10px] font-bold">Categorie</span>
+            </button>
         </nav>
     </div>
 
@@ -169,13 +207,14 @@
         const TOKEN_SEGRETO = "Mellaredo2026!";
         const PIN_ACCESSO_FAMIGLIA = "2026"; 
 
+        // Modificata la struttura inserendo la proprietà 'macro' per la nidificazione di default
         const CATEGORIE = [
-            { id: 'Spesa', nome: 'Spesa', icon: 'fa-basket-shopping', color: 'from-amber-500/10 to-orange-500/5 text-amber-400 border-amber-500/20' },
-            { id: 'Bollette', nome: 'Bollette', icon: 'fa-bolt', color: 'from-sky-500/10 to-blue-500/5 text-sky-400 border-sky-500/20' },
-            { id: 'Auto', nome: 'Auto e Benzina', icon: 'fa-car-side', color: 'from-purple-500/10 to-indigo-500/5 text-purple-400 border-purple-500/20' },
-            { id: 'Casa', nome: 'Casa / Fai da te', icon: 'fa-hammer', color: 'from-emerald-500/10 to-teal-500/5 text-emerald-400 border-emerald-500/20' },
-            { id: 'Svago', nome: 'Svago e Ristoranti', icon: 'fa-utensils', color: 'from-rose-500/10 to-pink-500/5 text-rose-400 border-rose-500/20' },
-            { id: 'Entrate', nome: 'Entrate / Stipendi', icon: 'fa-money-bill-trend-up', color: 'from-teal-500/15 to-emerald-500/5 text-teal-400 border-teal-500/30' }
+            { id: 'Spesa', nome: 'Spesa', icon: 'fa-basket-shopping', color: 'from-amber-500/10 to-orange-500/5 text-amber-400 border-amber-500/20', macro: 'PRIMARIE' },
+            { id: 'Bollette', nome: 'Bollette', icon: 'fa-bolt', color: 'from-sky-500/10 to-blue-500/5 text-sky-400 border-sky-500/20', macro: 'PRIMARIE' },
+            { id: 'Auto', nome: 'Auto e Benzina', icon: 'fa-car-side', color: 'from-purple-500/10 to-indigo-500/5 text-purple-400 border-purple-500/20', macro: 'DUREVOLI' },
+            { id: 'Casa', nome: 'Casa / Fai da te', icon: 'fa-hammer', color: 'from-emerald-500/10 to-teal-500/5 text-emerald-400 border-emerald-500/20', macro: 'DUREVOLI' },
+            { id: 'Svago', nome: 'Svago e Ristoranti', icon: 'fa-utensils', color: 'from-rose-500/10 to-pink-500/5 text-rose-400 border-rose-500/20', macro: 'DISCREZIONALI' },
+            { id: 'Entrate', nome: 'Entrate / Stipendi', icon: 'fa-money-bill-trend-up', color: 'from-teal-500/15 to-emerald-500/5 text-teal-400 border-teal-500/30', macro: 'PRIMARIE' }
         ];
 
         let autoreSelezionato = 'mattia';
@@ -187,7 +226,6 @@
         window.addEventListener('load', async () => {
             generaGrigliaCategorie();
             
-            // Imposta la data di oggi di default all'avvio dell'applicazione
             const dateInput = document.getElementById('transaction-date');
             if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
 
@@ -223,6 +261,58 @@
             if(elAttivo && attivo) elAttivo.className = `p-3 rounded-xl border bg-gradient-to-br ${attivo.color} flex flex-col items-center justify-center space-y-1.5 active:scale-95 transition-all text-center shadow-lg`;
         }
 
+        // Funzione per generare visivamente le categorie dentro le rispettive Macro Sezioni
+        function renderMacroCategorie() {
+            const macroGruppi = ['PRIMARIE', 'DUREVOLI', 'DISCREZIONALI'];
+            macroGruppi.forEach(macro => {
+                const container = document.getElementById(`macro-${macro}`);
+                if (!container) return;
+                container.innerHTML = '';
+                
+                const filtrate = CATEGORIE.filter(c => c.macro === macro);
+                if(filtrate.length === 0) {
+                    container.innerHTML = `<p class="col-span-2 text-center text-slate-600 text-[10px] py-4 italic pointer-events-none">Nessuna voce</p>`;
+                }
+
+                filtrate.forEach(c => {
+                    const block = document.createElement('div');
+                    block.id = `drag-${c.id}`;
+                    block.draggable = true;
+                    block.ondragstart = (e) => drag(e, c.id);
+                    block.className = `p-2 bg-slate-800/90 border border-slate-700/60 rounded-xl flex items-center space-x-2 cursor-grab active:cursor-grabbing text-[11px] font-semibold text-slate-300 transition-all select-none`;
+                    block.innerHTML = `<i class="fa-solid ${c.icon} text-slate-500 text-xs w-4 text-center"></i> <span class="truncate">${c.nome}</span>`;
+                    container.appendChild(block);
+                });
+            });
+        }
+
+        // --- GESTIONE LOGICA DRAG AND DROP ---
+        function drag(ev, id) {
+            ev.dataTransfer.setData("text/plain", id);
+        }
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+            ev.currentTarget.classList.add('drag-over');
+        }
+
+        function dragLeave(ev) {
+            ev.currentTarget.classList.remove('drag-over');
+        }
+
+        function drop(ev, targetMacro) {
+            ev.preventDefault();
+            ev.currentTarget.classList.remove('drag-over');
+            const catId = ev.dataTransfer.getData("text/plain");
+            const catObj = CATEGORIE.find(c => c.id === catId);
+            
+            if (catObj && catObj.macro !== targetMacro) {
+                catObj.macro = targetMacro;
+                renderMacroCategorie();
+                mostraNotifica(`Spostata in ${targetMacro} ✓`);
+            }
+        }
+
         function selezionaAutore(autore) {
             autoreSelezionato = autore;
             document.getElementById('label-utente').innerText = autore;
@@ -241,6 +331,7 @@
                 document.getElementById('view-inserimento').classList.remove('hidden');
                 document.getElementById('nav-home').className = "flex flex-col items-center space-y-1 text-slate-500";
                 document.getElementById('nav-movimenti').className = "flex flex-col items-center space-y-1 text-slate-500";
+                document.getElementById('nav-categorie').className = "flex flex-col items-center space-y-1 text-slate-500";
             }
         }
 
@@ -249,16 +340,22 @@
             const dest = document.getElementById(viewId);
             if(dest) dest.classList.remove('hidden');
             
+            // Gestione dell'illuminazione delle voci di navigazione inferiore (attiva/disattiva)
             document.getElementById('nav-home').className = viewId === 'view-home' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
             document.getElementById('nav-movimenti').className = viewId === 'view-movimenti' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
+            document.getElementById('nav-categorie').className = viewId === 'view-categorie' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
             
             if (viewId === 'view-home') {
                 modoModifica = false;
                 document.getElementById('importo').value = '';
                 document.getElementById('descrizione').value = '';
-                // Ripristina la data corrente a oggi quando l'utente torna alla home/dashboard
                 const dateInput = document.getElementById('transaction-date');
                 if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+            }
+
+            // Inizializza la vista macro categorie quando si seleziona il pannello
+            if (viewId === 'view-categorie') {
+                renderMacroCategorie();
             }
         }
 
@@ -359,7 +456,6 @@
             document.getElementById('importo').value = parseFloat(m.importo);
             document.getElementById('descrizione').value = m.descrizione;
             
-            // Popola il calendario con la data originale salvata del movimento in fase di modifica
             const dateInput = document.getElementById('transaction-date');
             if (dateInput && m.data) {
                 dateInput.value = m.data.split(' ')[0];
@@ -373,8 +469,8 @@
 
         async function salvaSpesa() {
             const importoInput = document.getElementById('importo');
-            const descrizioneInput = document.getElementById('descrizione');
-            const dataInput = document.getElementById('transaction-date'); // Recupero del campo data
+            const descripciónInput = document.getElementById('descrizione');
+            const dataInput = document.getElementById('transaction-date'); 
             const btnInvia = document.getElementById('btn-invia');
             const testoBottone = document.getElementById('testo-bottone');
             
@@ -391,7 +487,7 @@
                 categoria: categoriaSelezionata,
                 autore: autoreSelezionato,
                 tipo: categoriaSelezionata === 'Entrate' ? 'Entrata' : 'Uscita',
-                data: dataInput ? dataInput.value : new Date().toISOString().split('T')[0] // Cattura e invia il valore della data selezionata
+                data: dataInput ? dataInput.value : new Date().toISOString().split('T')[0] 
             };
 
             btnInvia.disabled = true;
@@ -424,7 +520,7 @@
         }
 
         async function forzaSincronizzazione() {
-            moostraNotifica("Aggiornamento dati...");
+            mostraNotifica("Aggiornamento dati...");
             await caricaMovimentiDati();
             mostraNotifica("Dati aggiornati ✓");
         }

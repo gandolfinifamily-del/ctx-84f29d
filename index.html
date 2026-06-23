@@ -173,4 +173,409 @@
             <div class="bg-slate-900 border-t border-slate-800 w-full max-w-md rounded-t-3xl p-5 space-y-4 shadow-2xl transform translate-y-0 transition-transform safe-bottom" onclick="event.stopPropagation()">
                 <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-2 opacity-40"></div>
                 <div class="text-center">
-                    <h4 id="modal-titolo" class="text-2xl font-black text-slate-100">€ 0.00
+                    <h4 id="modal-titolo" class="text-2xl font-black text-slate-100">€ 0.00</h4>
+                    <p id="modal-dettaglio" class="text-xs text-slate-400 mt-0.5">Dettaglio movimento</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <button onclick="attivaModificaMovimento()" class="bg-slate-800 border border-slate-700 text-slate-200 font-bold py-3.5 rounded-2xl active:scale-95 flex items-center justify-center space-x-2 text-xs">
+                        <i class="fa-solid fa-pen-to-square text-teal-400"></i> <span>Modifica Spesa</span>
+                    </button>
+                    <button onclick="eliminaMovimentoSelezionato()" class="bg-rose-500/10 border border-rose-500/30 text-rose-400 font-bold py-3.5 rounded-2xl active:scale-95 flex items-center justify-center space-x-2 text-xs">
+                        <i class="fa-solid fa-trash-can"></i> <span>Elimina Spesa</span>
+                    </button>
+                </div>
+                <button onclick="chiudiModal()" class="w-full bg-slate-950 border border-slate-800 text-slate-400 font-medium py-3 rounded-xl text-xs active:scale-95">Annulla</button>
+            </div>
+        </div>
+
+        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-950/95 backdrop-blur-md border-t border-slate-800/80 flex justify-around items-center py-2.5 z-40 safe-bottom">
+            <button id="nav-home" onclick="cambiaSchermata('view-home')" class="flex flex-col items-center space-y-1 text-teal-400">
+                <i class="fa-solid fa-house-chimney text-base"></i><span class="text-[10px] font-bold">Dashboard</span>
+            </button>
+            <button id="nav-movimenti" onclick="cambiaSchermata('view-movimenti')" class="flex flex-col items-center space-y-1 text-slate-500">
+                <i class="fa-solid fa-list-ul text-base"></i><span class="text-[10px] font-bold">Movimenti</span>
+            </button>
+            <button id="nav-categorie" onclick="cambiaSchermata('view-categorie')" class="flex flex-col items-center space-y-1 text-slate-500">
+                <i class="fa-solid fa-tags text-base"></i><span class="text-[10px] font-bold">Categorie</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw5z8gut6gPqVAlhtp8qw6ZksjoSFNdnfwk76u2B_kLDK8bTHig2qDL7Vi9yFru1DtR/exec"; 
+        const TOKEN_SEGRETO = "Mellaredo2026!";
+        const PIN_ACCESSO_FAMIGLIA = "2026"; 
+
+        const CATEGORIE = [
+            { id: 'Spesa', nome: 'Spesa', icon: 'fa-basket-shopping', color: 'from-amber-500/10 to-orange-500/5 text-amber-400 border-amber-500/20', macro: 'PRIMARIE' },
+            { id: 'Bollette', nome: 'Bollette', icon: 'fa-bolt', color: 'from-sky-500/10 to-blue-500/5 text-sky-400 border-sky-500/20', macro: 'PRIMARIE' },
+            { id: 'Auto', nome: 'Auto e Benzina', icon: 'fa-car-side', color: 'from-purple-500/10 to-indigo-500/5 text-purple-400 border-purple-500/20', macro: 'DUREVOLI' },
+            { id: 'Casa', nome: 'Casa / Fai da te', icon: 'fa-hammer', color: 'from-emerald-500/10 to-teal-500/5 text-emerald-400 border-emerald-500/20', macro: 'DUREVOLI' },
+            { id: 'Svago', nome: 'Svago e Ristoranti', icon: 'fa-utensils', color: 'from-rose-500/10 to-pink-500/5 text-rose-400 border-rose-500/20', macro: 'DISCREZIONALI' },
+            { id: 'Entrate', nome: 'Entrate / Stipendi', icon: 'fa-money-bill-trend-up', color: 'from-teal-500/15 to-emerald-500/5 text-teal-400 border-teal-500/30', macro: 'PRIMARIE' }
+        ];
+
+        let autoreSelezionato = 'mattia';
+        let categoriaSelezionata = 'Spesa';
+        let cacheMovimenti = [];
+        let movimentoSelezionatoId = null;
+        let modoModifica = false;
+
+        function checkStorageUnlocked() {
+            try {
+                return sessionStorage.getItem('app_is_unlocked') === "true";
+            } catch(e) {
+                return false; 
+            }
+        }
+
+        window.addEventListener('load', async () => {
+            generaGrigliaCategorie();
+            
+            const dateInput = document.getElementById('transaction-date');
+            if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+
+            if (checkStorageUnlocked()) {
+                document.getElementById('schermata-pin').style.display = 'none';
+                document.getElementById('schermata-pin').classList.add('hidden');
+                cambiaSchermata('view-home'); 
+                await caricaMovimentiDati();
+            }
+        });
+
+        function generaGrigliaCategorie() {
+            const grid = document.getElementById('grid-categorie');
+            if (!grid) return;
+            grid.innerHTML = '';
+            CATEGORIE.forEach(c => {
+                const b = document.createElement('button');
+                b.id = `cat-${c.id}`;
+                b.onclick = () => selezionaCategoria(c.id);
+                b.className = `p-3 rounded-xl border bg-slate-800/40 border-slate-800 text-slate-400 flex flex-col items-center justify-center space-y-1.5 active:scale-95 transition-all text-center`;
+                b.innerHTML = `<div class="w-7 h-7 rounded-lg flex items-center justify-center bg-slate-900"><i class="fa-solid ${c.icon} text-xs"></i></div><span class="text-[10px] font-bold leading-tight">${c.nome}</span>`;
+                grid.appendChild(b);
+            });
+            resetSelezioniCategoriaVisiva();
+        }
+
+        function resetSelezioniCategoriaVisiva() {
+            CATEGORIE.forEach(c => {
+                const el = document.getElementById(`cat-${c.id}`);
+                if(el) el.className = `p-3 rounded-xl border bg-slate-800/40 border-slate-800/80 text-slate-400 flex flex-col items-center justify-center space-y-1.5 active:scale-95 transition-all text-center`;
+            });
+            const attivo = CATEGORIE.find(c => c.id === categoriaSelezionata);
+            const elAttivo = document.getElementById(`cat-${categoriaSelezionata}`);
+            if(elAttivo && attivo) elAttivo.className = `p-3 rounded-xl border bg-gradient-to-br ${attivo.color} flex flex-col items-center justify-center space-y-1.5 active:scale-95 transition-all text-center shadow-lg`;
+        }
+
+        function renderMacroCategorie() {
+            const macroGruppi = ['PRIMARIE', 'DUREVOLI', 'DISCREZIONALI'];
+            macroGruppi.forEach(macro => {
+                const container = document.getElementById(`macro-${macro}`);
+                if (!container) return;
+                container.innerHTML = '';
+                
+                const filtrate = CATEGORIE.filter(c => c.macro === macro);
+                if(filtrate.length === 0) {
+                    container.innerHTML = `<p class="col-span-2 text-center text-slate-600 text-[10px] py-4 italic pointer-events-none">Nessuna voce</p>`;
+                }
+
+                filtrate.forEach(c => {
+                    const block = document.createElement('div');
+                    block.id = `drag-${c.id}`;
+                    block.draggable = true;
+                    block.ondragstart = (e) => drag(e, c.id);
+                    block.className = `p-2 bg-slate-800/90 border border-slate-700/60 rounded-xl flex items-center space-x-2 cursor-grab active:cursor-grabbing text-[11px] font-semibold text-slate-300 transition-all select-none`;
+                    block.innerHTML = `<i class="fa-solid ${c.icon} text-slate-500 text-xs w-4 text-center"></i> <span class="truncate">${c.nome}</span>`;
+                    container.appendChild(block);
+                });
+            });
+        }
+
+        function drag(ev, id) {
+            ev.dataTransfer.setData("text/plain", id);
+        }
+
+        document.addEventListener("dragover", function(event) {
+            event.preventDefault();
+        });
+
+        if (window.Node) {
+            document.addEventListener("dragover", function(e) { e.preventDefault(); });
+        }
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+            ev.currentTarget.classList.add('drag-over');
+        }
+
+        function dragLeave(ev) {
+            ev.currentTarget.classList.remove('drag-over');
+        }
+
+        function drop(ev, targetMacro) {
+            ev.preventDefault();
+            ev.currentTarget.classList.remove('drag-over');
+            const catId = ev.dataTransfer.getData("text/plain");
+            const catObj = CATEGORIE.find(c => c.id === catId);
+            
+            if (catObj && catObj.macro !== targetMacro) {
+                catObj.macro = targetMacro;
+                renderMacroCategorie();
+                mostraNotifica(`Spostata in ${targetMacro} ✓`);
+            }
+        }
+
+        function selezionaAutore(autore) {
+            autoreSelezionato = autore;
+            document.getElementById('label-utente').innerText = autore;
+            document.getElementById('btn-autore-mattia').className = autore === 'mattia' ? "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all bg-teal-500/10 border-teal-500/30 text-teal-400" : "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all bg-slate-800/80 border-slate-700/80 text-slate-400";
+            document.getElementById('btn-autore-claudia').className = autore === 'claudia' ? "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all bg-teal-500/10 border-teal-500/30 text-teal-400" : "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all bg-slate-800/80 border-slate-700/80 text-slate-400";
+        }
+
+        function selezionaCategoria(catId) {
+            categoriaSelezionata = catId;
+            resetSelezioniCategoriaVisiva();
+            const attivo = CATEGORIE.find(c => c.id === catId);
+            document.getElementById('sottotitolo-inserimento').innerText = attivo ? attivo.nome : "";
+            
+            document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+            document.getElementById('view-inserimento').classList.remove('hidden');
+            document.getElementById('nav-home').className = "flex flex-col items-center space-y-1 text-slate-500";
+            document.getElementById('nav-movimenti').className = "flex flex-col items-center space-y-1 text-slate-500";
+            document.getElementById('nav-categorie').className = "flex flex-col items-center space-y-1 text-slate-500";
+        }
+
+        function cambiaSchermata(viewId) {
+            document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+            const dest = document.getElementById(viewId);
+            if(dest) dest.classList.remove('hidden');
+            
+            document.getElementById('nav-home').className = viewId === 'view-home' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
+            document.getElementById('nav-movimenti').className = viewId === 'view-movimenti' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
+            document.getElementById('nav-categorie').className = viewId === 'view-categorie' ? "flex flex-col items-center space-y-1 text-teal-400" : "flex flex-col items-center space-y-1 text-slate-500";
+            
+            if (viewId === 'view-home') {
+                modoModifica = false;
+                document.getElementById('importo').value = '';
+                document.getElementById('descrizione').value = '';
+                const dateInput = document.getElementById('transaction-date');
+                if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+            }
+
+            if (viewId === 'view-categorie') {
+                renderMacroCategorie();
+            }
+        }
+
+        function tornaAllaHome() { cambiaSchermata('view-home'); }
+
+        function verificaEAttivaPIN() {
+            const inputField = document.getElementById('input-pin');
+            if (!inputField) return;
+            const pinInserito = inputField.value.trim();
+            
+            if (pinInserito === PIN_ACCESSO_FAMIGLIA || pinInserito === "2026") {
+                try {
+                    sessionStorage.setItem('app_is_unlocked', "true");
+                } catch(e) {
+                    console.warn("Storage non disponibile:", e);
+                }
+                
+                document.getElementById('schermata-pin').style.display = 'none';
+                document.getElementById('schermata-pin').classList.add('hidden');
+                inputField.value = '';
+                mostraNotifica("Accesso autorizzato ✓");
+                cambiaSchermata('view-home');
+                caricaMovimentiDati();
+            } else {
+                alert("PIN Errato! Accesso negato.");
+                inputField.value = '';
+            }
+        }
+
+        async function caricaMovimentiDati() {
+            try {
+                const res = await fetch(WEB_APP_URL);
+                const r = await res.json();
+                if (r && r.status === 'success') { 
+                    cacheMovimenti = Array.isArray(r.dati) ? r.dati : []; 
+                    renderListaMovimenti(); 
+                    aggiornaTotaleMese();
+                    return cacheMovimenti; 
+                }
+            } catch (e) { 
+                console.error("Errore caricamento dati cloud:", e); 
+            }
+            return [];
+        }
+
+        function renderListaMovimenti() {
+            const lista = document.getElementById('lista-movimenti');
+            if (!lista) return;
+            if (!cacheMovimenti || cacheMovimenti.length === 0) { 
+                lista.innerHTML = `<p class="text-center text-slate-500 text-xs pt-6">Nessun movimento trovato.</p>`; 
+                return; 
+            }
+            lista.innerHTML = '';
+            cacheMovimenti.forEach(m => {
+                if (!m) return;
+                const div = document.createElement('div');
+                div.className = "bg-slate-800/50 border border-slate-800/80 p-3 rounded-xl flex justify-between items-center cursor-pointer active:scale-[0.99] transition-all select-none touch-manipulation";
+                div.onclick = function() { apriModalGestione(m.id); };
+                
+                const tipoMov = m.tipo ? String(m.tipo).toLowerCase() : 'uscita';
+                const colorImporto = tipoMov === 'entrata' ? 'text-teal-400' : 'text-slate-200';
+                const segnoImporto = tipoMov === 'entrata' ? '+' : '';
+                
+                const descStr = m.descrizione ? m.descrizione : '';
+                const dataStr = m.data ? String(m.data).split(' ')[0] : '';
+                const autoreStr = m.autore ? String(m.autore) : '';
+                const catStr = m.categoria ? String(m.categoria) : '';
+                const impNum = m.importo ? parseFloat(m.importo) : 0;
+                
+                div.innerHTML = `
+                    <div class="pointer-events-none">
+                        <p class="font-semibold text-xs text-slate-200">${descStr}</p>
+                        <p class="text-[10px] text-slate-500">${dataStr} • <span class="capitalize">${autoreStr.toLowerCase()}</span></p>
+                    </div>
+                    <div class="text-right pointer-events-none">
+                        <p class="font-bold text-xs ${colorImporto}">${segnoImporto}€ ${impNum.toFixed(2)}</p>
+                        <p class="text-[9px] bg-slate-700/40 text-slate-400 px-1.5 py-0.5 rounded inline-block">${catStr}</p>
+                    </div>
+                `;
+                lista.appendChild(div);
+            });
+        }
+
+        function aggiornaTotaleMese() {
+            let totale = 0;
+            if (Array.isArray(cacheMovimenti)) {
+                cacheMovimenti.forEach(m => {
+                    if (m && m.tipo) {
+                        const t = String(m.tipo).toLowerCase();
+                        if (t === 'uscita' || t === 'uscite') {
+                            totale += m.importo ? parseFloat(m.importo) : 0;
+                        }
+                    }
+                });
+            }
+            const elTotale = document.getElementById('totale-mese');
+            if (elTotale) elTotale.innerText = `€ ${totale.toFixed(2)}`;
+        }
+
+        function apriModalGestione(idMovimento) {
+            movimentoSelezionatoId = idMovimento;
+            const m = cacheMovimenti.find(item => item && String(item.id) === String(idMovimento));
+            if (!m) return;
+            const impNum = m.importo ? parseFloat(m.importo) : 0;
+            document.getElementById('modal-titolo').innerText = `€ ${impNum.toFixed(2)}`;
+            document.getElementById('modal-dettaglio').innerText = `${m.descrizione || ''} (${m.categoria || ''})`;
+            document.getElementById('modal-gestione').classList.remove('hidden');
+        }
+
+        function chiudiModal() { document.getElementById('modal-gestione').classList.add('hidden'); }
+
+        function attivaModificaMovimento() {
+            const m = cacheMovimenti.find(item => item && String(item.id) === String(movimentoSelezionatoId));
+            chiudiModal();
+            if (!m) return;
+            modoModifica = true;
+            categoriaSelezionata = m.categoria || 'Spesa';
+            if (m.autore) selezionaAutore(m.autore.toLowerCase());
+            resetSelezioniCategoriaVisiva();
+            
+            document.getElementById('titolo-inserimento').innerText = "Modifica Movimento";
+            document.getElementById('sottotitolo-inserimento').innerText = categoriaSelezionata;
+            document.getElementById('importo').value = m.importo ? parseFloat(m.importo) : '';
+            document.getElementById('descrizione').value = m.descrizione || '';
+            
+            const dateInput = document.getElementById('transaction-date');
+            if (dateInput && m.data) {
+                dateInput.value = String(m.data).split(' ')[0];
+            }
+            
+            document.getElementById('testo-bottone').innerText = "Salva Modifiche";
+            
+            document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+            document.getElementById('view-inserimento').classList.remove('hidden');
+        }
+
+        async function salvaSpesa() {
+            const importoInput = document.getElementById('importo');
+            const descrizioneInput = document.getElementById('descrizione'); 
+            const dataInput = document.getElementById('transaction-date'); 
+            const btnInvia = document.getElementById('btn-invia');
+            const testoBottone = document.getElementById('testo-bottone');
+            
+            if (!importoInput || !descrizioneInput) return;
+            
+            const importo = parseFloat(importoInput.value.replace(',', '.'));
+            const descrizione = descrizioneInput.value.trim() || (categoriaSelezionata === 'Entrate' ? "Entrata generica" : "Spesa generica");
+            if (isNaN(importo) || importo <= 0) { alert("Inserisci un importo valido!"); return; }
+
+            const dati = {
+                token: TOKEN_SEGRETO,
+                azione: modoModifica ? "modifica" : "inserisci",
+                id: modoModifica ? String(movimentoSelezionatoId) : undefined,
+                importo: importo.toFixed(2),
+                descrizione: descrizione,
+                categoria: categoriaSelezionata,
+                autore: autoreSelezionato,
+                tipo: categoriaSelezionata === 'Entrate' ? 'Entrata' : 'Uscita',
+                data: dataInput ? dataInput.value : new Date().toISOString().split('T')[0] 
+            };
+
+            btnInvia.disabled = true;
+            testoBottone.innerText = "Elaborazione...";
+
+            try {
+                await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(dati) });
+                mostraNotifica(modoModifica ? "Modifica completata" : "Spesa registrata");
+                setTimeout(async () => {
+                    await caricaMovimentiDati();
+                    tornaAllaHome();
+                    btnInvia.disabled = false;
+                }, 1000);
+            } catch (e) { alert("Errore di rete."); btnInvia.disabled = false; }
+        }
+
+        async function eliminaMovimentoSelezionato() {
+            if (!confirm("Vuoi davvero eliminare questo movimento?")) return;
+            chiudiModal();
+            mostraNotifica("Eliminazione in corso...");
+            try {
+                await fetch(WEB_APP_URL, { 
+                    method: 'POST', 
+                    mode: 'no-cors', 
+                    body: JSON.stringify({ token: TOKEN_SEGRETO, azione: "elimina", id: String(movimentoSelezionatoId) }) 
+                });
+                await caricaMovimentiDati();
+                mostraNotifica("Eliminato con successo ✓");
+            } catch (e) { alert("Errore durante l'eliminazione."); }
+        }
+
+        async function forzaSincronizzazione() {
+            mostraNotifica("Aggiornamento dati..."); 
+            await caricaMovimentiDati();
+            mostraNotifica("Dati aggiornati ✓");
+        }
+
+        function mostraNotifica(testo) {
+            const bar = document.getElementById('status-bar');
+            if (!bar) return;
+            document.getElementById('status-text').innerText = testo;
+            bar.classList.remove('hidden');
+            setTimeout(() => bar.classList.add('hidden'), 2500);
+        }
+
+        function effettuaLogOut() {
+            try {
+                sessionStorage.clear();
+                localStorage.clear();
+            } catch(e) {}
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>

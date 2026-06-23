@@ -346,6 +346,12 @@
             const subt = document.getElementById('sottotitolo-inserimento');
             if (subt) subt.innerText = attivo ? attivo.nome : "";
             
+            // Forza il reset dei testi per i nuovi inserimenti
+            const titoloIns = document.getElementById('titolo-inserimento');
+            const btnText = document.getElementById('testo-bottone');
+            if (titoloIns) titoloIns.innerText = "Nuovo Inserimento";
+            if (btnText) btnText.innerText = "Registra Spesa";
+
             document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
             const viewIns = document.getElementById('view-inserimento');
             if (viewIns) viewIns.classList.remove('hidden');
@@ -397,7 +403,6 @@
             if (pinInserito === PIN_ACCESSO_FAMIGLIA || pinInserito === "2026") {
                 const pinScreen = document.getElementById('schermata-pin');
                 if (pinScreen) {
-                    // Forza la rimozione a schermo con massima priorità inline bypassando conflitti CSS
                     pinScreen.style.setProperty('display', 'none', 'important');
                     pinScreen.classList.add('hidden');
                 }
@@ -409,7 +414,6 @@
                 inputField.value = '';
                 mostraNotifica("Accesso autorizzato ✓");
                 
-                // Isola l'esecuzione asincrona delle viste per evitare rallentamenti grafici
                 setTimeout(() => {
                     cambiaSchermata('view-home');
                     caricaMovimentiDati();
@@ -535,7 +539,7 @@
             const btnInvia = document.getElementById('btn-invia');
             const testoBottone = document.getElementById('testo-bottone');
             
-            if (!importoInput || !descrizioneInput) return;
+            if (!importoInput || !descrizioneInput || !btnInvia || !testoBottone) return;
             
             const importo = parseFloat(importoInput.value.replace(',', '.'));
             const descrizione = descrizioneInput.value.trim() || (categoriaSelezionata === 'Entrate' ? "Entrata generica" : "Spesa generica");
@@ -559,12 +563,22 @@
             try {
                 await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(dati) });
                 mostraNotifica(modoModifica ? "Modifica completata" : "Spesa registrata");
-                setTimeout(async () => {
-                    await caricaMovimentiDati();
-                    tornaAllaHome();
-                    btnInvia.disabled = false;
-                }, 1000);
-            } catch (e) { alert("Errore di rete."); btnInvia.disabled = false; }
+                
+                // Forza l'asincronia lineare sequenziale pulita senza timer volanti
+                await caricaMovimentiDati();
+                tornaAllaHome();
+            } catch (e) { 
+                alert("Errore di rete o sincronizzazione cloud fallita."); 
+                console.error(e);
+            } finally {
+                // Questo blocco viene eseguito SEMPRE (sia in caso di successo che di crash della fetch)
+                btnInvia.disabled = false;
+                testoBottone.innerText = modoModifica ? "Salva Modifiche" : "Registra Spesa";
+            }
+        }
+
+        async function物理eliminaMovimentoSelezionato() {
+            // Riferimento interno di sicurezza
         }
 
         async function eliminaMovimentoSelezionato() {
